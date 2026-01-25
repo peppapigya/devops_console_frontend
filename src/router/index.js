@@ -1,8 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-const routes = [
+// Dashboard Layout (Authenticated)
+const dashboardRoutes = [
   {
-    path: '/',
+    path: '', // Default child for /
     name: 'Dashboard',
     component: () => import('../views/Dashboard.vue'),
     meta: {
@@ -11,7 +12,7 @@ const routes = [
     }
   },
   {
-    path: '/es',
+    path: 'es', // Note: removed leading slash for children
     name: 'EsDashboard',
     component: () => import('../views/es/EsDashboard.vue'),
     meta: {
@@ -21,7 +22,7 @@ const routes = [
     }
   },
   {
-    path: '/instances',
+    path: 'instances',
     name: 'InstanceList',
     component: () => import('../views/es/InstanceManagement.vue'),
     meta: {
@@ -30,7 +31,7 @@ const routes = [
     }
   },
   {
-    path: '/instances/detail/:id',
+    path: 'instances/detail/:id',
     name: 'InstanceDetail',
     component: () => import('../views/es/InstanceDetail.vue'),
     meta: {
@@ -39,7 +40,7 @@ const routes = [
     }
   },
   {
-    path: '/instances/add',
+    path: 'instances/add',
     name: 'AddInstance',
     component: () => import('../views/es/InstanceForm.vue'),
     meta: {
@@ -48,7 +49,7 @@ const routes = [
     }
   },
   {
-    path: '/instances/edit/:id',
+    path: 'instances/edit/:id',
     name: 'EditInstance',
     component: () => import('../views/es/InstanceForm.vue'),
     meta: {
@@ -58,7 +59,7 @@ const routes = [
   },
   // ES 模块路由
   {
-    path: '/nodes',
+    path: 'nodes',
     name: 'ESNodeManagement',
     component: () => import('../views/es/NodeManagement.vue'),
     meta: {
@@ -68,7 +69,7 @@ const routes = [
     }
   },
   {
-    path: '/indices',
+    path: 'indices',
     name: 'IndexManagement',
     component: () => import('../views/es/IndexManagement.vue'),
     meta: {
@@ -78,7 +79,7 @@ const routes = [
     }
   },
   {
-    path: '/shards',
+    path: 'shards',
     name: 'ShardManagement',
     component: () => import('../views/es/ShardManagement.vue'),
     meta: {
@@ -88,7 +89,7 @@ const routes = [
     }
   },
   {
-    path: '/backup',
+    path: 'backup',
     name: 'BackupManagement',
     component: () => import('../views/es/BackupManagement.vue'),
     meta: {
@@ -98,7 +99,7 @@ const routes = [
     }
   },
   {
-    path: '/data',
+    path: 'data',
     name: 'DataManagement',
     component: () => import('../views/es/DataManagement.vue'),
     meta: {
@@ -109,7 +110,7 @@ const routes = [
   },
   // K8s 模块路由
   {
-    path: '/k8s',
+    path: 'k8s',
     name: 'K8sDashboard',
     component: () => import('../views/k8s/K8sDashboard.vue'),
     meta: {
@@ -118,9 +119,9 @@ const routes = [
       instanceType: 'kubernetes'
     }
   },
-  
+
   {
-    path: '/k8s/cluster/:clusterName',
+    path: 'k8s/cluster/:clusterName',
     name: 'ClusterDetail',
     component: () => import('../views/k8s/ClusterDetail.vue'),
     meta: {
@@ -130,7 +131,7 @@ const routes = [
     }
   },
   {
-    path: '/k8s/node',
+    path: 'k8s/node',
     name: 'K8sNodeManagement',
     component: () => import('../views/k8s/NodeManagement.vue'),
     meta: {
@@ -140,7 +141,7 @@ const routes = [
     }
   },
   {
-    path: '/k8s/pod',
+    path: 'k8s/pod',
     name: 'PodManagement',
     component: () => import('../views/k8s/PodManagement.vue'),
     meta: {
@@ -150,7 +151,7 @@ const routes = [
     }
   },
   {
-    path: '/k8s/deployment',
+    path: 'k8s/deployment',
     name: 'DeploymentManagement',
     component: () => import('../views/k8s/DeploymentManagement.vue'),
     meta: {
@@ -160,7 +161,7 @@ const routes = [
     }
   },
   {
-    path: '/k8s/namespace',
+    path: 'k8s/namespace',
     name: 'NamespaceManagement',
     component: () => import('../views/k8s/NamespaceManagement.vue'),
     meta: {
@@ -170,7 +171,7 @@ const routes = [
     }
   },
   {
-    path: '/k8s/service',
+    path: 'k8s/service',
     name: 'ServiceManagement',
     component: () => import('../views/k8s/ServiceManagement.vue'),
     meta: {
@@ -180,7 +181,7 @@ const routes = [
     }
   },
   {
-    path: '/k8s/cronjob',
+    path: 'k8s/cronjob',
     name: 'CronJobManagement',
     component: () => import('../views/k8s/CronJobManagement.vue'),
     meta: {
@@ -190,7 +191,7 @@ const routes = [
     }
   },
   {
-    path: '/k8s/daemonset',
+    path: 'k8s/daemonset',
     name: 'DaemonSetManagement',
     component: () => import('../views/k8s/DaemonSetManagement.vue'),
     meta: {
@@ -200,7 +201,7 @@ const routes = [
     }
   },
   {
-    path: '/k8s/job',
+    path: 'k8s/job',
     name: 'JobManagement',
     component: () => import('../views/k8s/JobManagement.vue'),
     meta: {
@@ -210,13 +211,30 @@ const routes = [
     }
   },
   {
-    path: '/settings',
+    path: 'settings',
     name: 'Settings',
     component: () => import('../views/es/Settings.vue'),
     meta: {
       title: '系统设置',
       icon: 'Setting'
     }
+  }
+]
+
+const routes = [
+  {
+    path: '/login',
+    name: 'Login',
+    component: () => import('../views/system/login/index.vue'),
+    meta: {
+      title: 'Login',
+      title: '登录'
+    }
+  },
+  {
+    path: '/',
+    component: () => import('../layouts/AppLayout.vue'),
+    children: dashboardRoutes
   }
 ]
 
@@ -236,9 +254,16 @@ router.beforeEach((to, from, next) => {
   if (to.meta.title) {
     document.title = `${to.meta.title} - DevOps Console`
   }
-  
-  // 先允许导航，然后在组件中检查实例类型
-  next()
+
+  // Auth Guard
+  const token = localStorage.getItem('access_token')
+  if (to.path !== '/login' && !token) {
+    next('/login')
+  } else if (to.path === '/login' && token) {
+    next('/')
+  } else {
+    next()
+  }
 })
 
 export default router

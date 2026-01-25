@@ -620,8 +620,10 @@ const handleUserCommand = (command) => {
       router.push('/settings')
       break
     case 'logout':
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
       ElMessage.success('已退出登录')
-      // 这里可以添加退出登录的逻辑
+      router.push('/login')
       break
   }
 }
