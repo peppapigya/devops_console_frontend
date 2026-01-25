@@ -42,8 +42,21 @@ api.interceptors.response.use(
     const { data } = response
 
     if (data.status !== 200) {
+      // Handle 401 inside 200 OK specifically
+      if (data.status === 401) {
+        console.error('API Business Logic 401 triggered logout.')
+        if (localStorage.getItem('access_token')) {
+          localStorage.removeItem('access_token')
+          localStorage.removeItem('refresh_token')
+        }
+        window.location.href = '/login'
+        // We return here to stop propagation, or throw error depending on need.
+        // Usually better to throw so the component knows it failed, but since we redirect, it might not matter.
+        throw new Error('Token expired')
+      }
       throw new Error(data.message || '请求失败')
     }
+    return data
     return data
   },
   error => {
