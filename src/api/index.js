@@ -1,4 +1,5 @@
 import axios from 'axios'
+import {showError} from "@/utils/errorPopup.js";
 
 // 创建axios实例
 const api = axios.create({
@@ -12,24 +13,19 @@ const api = axios.create({
 // 请求拦截器
 api.interceptors.request.use(
   config => {
-    // 在发送请求之前做些什么
     const token = localStorage.getItem('access_token')
     console.log(`[API Request] URL: ${config.url} | Token exists: ${!!token}`)
 
-    // Optional: Log token for debugging (masked)
     if (token) {
-      // console.log('Token value:', token)
     } else {
       console.log('No token found in localStorage for this request')
     }
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`
-      // console.log('Final Headers:', config.headers)
     }
     return config
   },
   error => {
-    // 对请求错误做些什么
     console.error('Request Interceptor Error:', error)
     return Promise.reject(error)
   }
@@ -42,21 +38,15 @@ api.interceptors.response.use(
     const { data } = response
 
     if (data.status !== 200) {
-      // Handle 401 inside 200 OK specifically
       if (data.status === 401) {
-        console.error('API Business Logic 401 triggered logout.')
         if (localStorage.getItem('access_token')) {
           localStorage.removeItem('access_token')
           localStorage.removeItem('refresh_token')
         }
-        window.location.href = '/login'
-        // We return here to stop propagation, or throw error depending on need.
-        // Usually better to throw so the component knows it failed, but since we redirect, it might not matter.
-        throw new Error('Token expired')
+        showError(data.message || '登录已过期，请重新登录','登录已过期')
       }
       throw new Error(data.message || '请求失败')
     }
-    return data
     return data
   },
   error => {
@@ -68,14 +58,12 @@ api.interceptors.response.use(
         data: error.response.data,
         headers: error.response.headers
       })
-      // Redirect to login if not already there
       if (!window.location.pathname.includes('/login')) {
-        // Only clean up if we are sure it's a token issue
         if (localStorage.getItem('access_token')) {
           localStorage.removeItem('access_token')
           localStorage.removeItem('refresh_token')
         }
-        window.location.href = '/login'
+        showError(error.response.data.message || '登录已过期，请重新登录')
       }
     }
     const message = error.response?.data?.message || error.message || '网络错误'
