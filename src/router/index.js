@@ -218,6 +218,49 @@ const dashboardRoutes = [
       title: '系统设置',
       icon: 'Setting'
     }
+  },
+  // CI/CD Module Routes
+  {
+    path: 'cicd',
+    redirect: '/cicd/pipelines',
+    meta: { title: 'CI/CD' } // Add meta if needed for breadcrumbs
+  },
+  {
+    path: 'cicd/pipelines',
+    name: 'PipelineList',
+    component: () => import('../views/cicd/PipelineList.vue'),
+    meta: {
+      title: '流水线',
+      icon: 'Cpu',
+      instanceType: 'cicd' // Special type or global
+    }
+  },
+  {
+    path: 'cicd/pipelines/create',
+    name: 'PipelineCreate',
+    component: () => import('../views/cicd/PipelineEditor.vue'),
+    meta: {
+      title: '新建流水线',
+      hideInMenu: true
+    }
+  },
+  {
+    path: 'cicd/pipelines/:id/edit',
+    name: 'PipelineEdit',
+    component: () => import('../views/cicd/PipelineEditor.vue'),
+    meta: {
+      title: '编辑流水线',
+      hideInMenu: true
+    }
+  },
+  {
+    path: 'cicd/runs/:id',
+    name: 'PipelineRunDetail',
+    component: () => import('../views/cicd/PipelineRunDetail.vue'),
+    meta: {
+      title: '执行详情',
+      hideInMenu: true // Assuming we have such logic or handled by manual menu construction
+    }
   }
 ]
 

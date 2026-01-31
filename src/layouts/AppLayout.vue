@@ -217,7 +217,7 @@ import {
   Sunny, Moon, House, DocumentCopy, Grid, CopyDocument, TrendCharts,
   Connection, Plus, List, Search, Refresh, Edit, ArrowRight,
   DataLine, WarningFilled, Delete, MoreFilled, Box, Files, Folder, FolderOpened, DataBoard, Timer,
-  Expand, Fold, CaretBottom
+  Expand, Fold, CaretBottom, Cpu
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -295,11 +295,20 @@ const allMenuRoutes = computed(() => {
     {path: '/settings', meta: {title: '系统设置', icon: 'Setting'}}
   ]
 
+  // CI/CD 菜单
+  const cicdMenus = [
+      {
+          path: '/cicd/pipelines', 
+          meta: { title: 'CI/CD 流水线', icon: 'Cpu' }
+      }
+  ]
+
   if (instanceType === 'kubernetes') {
-    return [...k8sMenus, ...commonMenus]
+    return [...k8sMenus, ...cicdMenus, ...commonMenus]
   } else if (instanceType === 'elasticsearch') {
     return [...esMenus, ...commonMenus]
   } else {
+    // 默认返回 ES 菜单
     return [...esMenus, ...commonMenus]
   }
 })
