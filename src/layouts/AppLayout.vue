@@ -217,7 +217,7 @@ import {
   Sunny, Moon, House, DocumentCopy, Grid, CopyDocument, TrendCharts,
   Connection, Plus, List, Search, Refresh, Edit, ArrowRight,
   DataLine, WarningFilled, Delete, MoreFilled, Box, Files, Folder, FolderOpened, DataBoard, Timer,
-  Expand, Fold, CaretBottom, Cpu
+  Expand, Fold, CaretBottom, Cpu, Coin, Ticket
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -279,6 +279,15 @@ const allMenuRoutes = computed(() => {
         {path: '/k8s/daemonset', meta: {title: 'DaemonSets', icon: 'Monitor', instanceType: 'kubernetes'}},
         {path: '/k8s/job', meta: {title: 'Jobs', icon: 'List', instanceType: 'kubernetes'}},
         {path: '/k8s/cronjob', meta: {title: 'CronJobs', icon: 'Timer', instanceType: 'kubernetes'}},
+      ]
+    },
+    {
+      path: 'k8s-storage',
+      meta: {title: '存储管理', icon: 'Coin'},
+      children: [
+        {path: '/k8s/pv', meta: {title: 'PV管理', icon: 'Coin', instanceType: 'kubernetes'}},
+        {path: '/k8s/pvc', meta: {title: 'PVC管理', icon: 'Ticket', instanceType: 'kubernetes'}},
+        {path: '/k8s/storageclass', meta: {title: 'StorageClass', icon: 'Box', instanceType: 'kubernetes'}},
       ]
     },
     {

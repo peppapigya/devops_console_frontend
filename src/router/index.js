@@ -211,6 +211,36 @@ const dashboardRoutes = [
     }
   },
   {
+    path: 'k8s/pv',
+    name: 'PvManagement',
+    component: () => import('../views/k8s/PvManagement.vue'),
+    meta: {
+      title: 'PV管理',
+      icon: 'Coin',
+      instanceType: 'kubernetes'
+    }
+  },
+  {
+    path: 'k8s/pvc',
+    name: 'PvcManagement',
+    component: () => import('../views/k8s/PvcManagement.vue'),
+    meta: {
+      title: 'PVC管理',
+      icon: 'Ticket',
+      instanceType: 'kubernetes'
+    }
+  },
+  {
+    path: 'k8s/storageclass',
+    name: 'StorageClassManagement',
+    component: () => import('../views/k8s/StorageClassManagement.vue'),
+    meta: {
+      title: 'SC管理',
+      icon: 'Box',
+      instanceType: 'kubernetes'
+    }
+  },
+  {
     path: 'settings',
     name: 'Settings',
     component: () => import('../views/es/Settings.vue'),
