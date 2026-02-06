@@ -181,6 +181,16 @@ const dashboardRoutes = [
     }
   },
   {
+    path: 'k8s/ingress',
+    name: 'IngressManagement',
+    component: () => import('../views/k8s/IngressManagement.vue'),
+    meta: {
+      title: 'Ingress管理',
+      icon: 'Share',
+      instanceType: 'kubernetes'
+    }
+  },
+  {
     path: 'k8s/cronjob',
     name: 'CronJobManagement',
     component: () => import('../views/k8s/CronJobManagement.vue'),
@@ -197,6 +207,37 @@ const dashboardRoutes = [
     meta: {
       title: 'DaemonSet管理',
       icon: 'Monitor',
+      instanceType: 'kubernetes'
+    }
+  },
+  // Helm 应用商店
+  {
+    path: 'helm/repos',
+    name: 'HelmRepoManagement',
+    component: () => import('../views/helm/RepoManagement.vue'),
+    meta: {
+      title: 'Helm仓库',
+      icon: 'Box',
+      instanceType: 'kubernetes'
+    }
+  },
+  {
+    path: 'helm/store',
+    name: 'HelmAppStore',
+    component: () => import('../views/helm/AppStore.vue'),
+    meta: {
+      title: 'Helm应用商店',
+      icon: 'ShoppingCart',
+      instanceType: 'kubernetes'
+    }
+  },
+  {
+    path: 'helm/installed',
+    name: 'HelmInstalledApps',
+    component: () => import('../views/helm/InstalledApps.vue'),
+    meta: {
+      title: '已安装应用',
+      icon: 'Histogram',
       instanceType: 'kubernetes'
     }
   },

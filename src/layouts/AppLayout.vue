@@ -217,7 +217,7 @@ import {
   Sunny, Moon, House, DocumentCopy, Grid, CopyDocument, TrendCharts,
   Connection, Plus, List, Search, Refresh, Edit, ArrowRight,
   DataLine, WarningFilled, Delete, MoreFilled, Box, Files, Folder, FolderOpened, DataBoard, Timer,
-  Expand, Fold, CaretBottom, Cpu, Coin, Ticket
+  Expand, Fold, CaretBottom, Cpu, Coin, Ticket, Share
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -295,7 +295,17 @@ const allMenuRoutes = computed(() => {
        meta: {title: '网络管理', icon: 'Connection'},
        children: [
          {path: '/k8s/service', meta: {title: 'Services', icon: 'Connection', instanceType: 'kubernetes'}},
+         {path: '/k8s/ingress', meta: {title: 'Ingress', icon: 'Share', instanceType: 'kubernetes'}},
        ]
+    },
+    {
+      path: 'helm',
+      meta: {title: 'Helm 应用商店', icon: 'ShoppingCart'},
+      children: [
+        {path: '/helm/repos', meta: {title: 'Helm仓库', icon: 'Box', instanceType: 'kubernetes'}},
+        {path: '/helm/store', meta: {title: '应用商店', icon: 'ShoppingCart', instanceType: 'kubernetes'}},
+        {path: '/helm/installed', meta: {title: '已安装应用', icon: 'Histogram', instanceType: 'kubernetes'}},
+      ]
     }
   ]
 
