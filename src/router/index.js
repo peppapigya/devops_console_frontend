@@ -191,6 +191,46 @@ const dashboardRoutes = [
     }
   },
   {
+    path: 'k8s/ingressclass',
+    name: 'IngressClassManagement',
+    component: () => import('../views/k8s/IngressClassManagement.vue'),
+    meta: {
+      title: 'IngressClass管理',
+      icon: 'Operation',
+      instanceType: 'kubernetes'
+    }
+  },
+  {
+    path: 'k8s/configmap',
+    name: 'ConfigMapManagement',
+    component: () => import('../views/k8s/ConfigMapManagement.vue'),
+    meta: {
+      title: 'ConfigMap管理',
+      icon: 'Document',
+      instanceType: 'kubernetes'
+    }
+  },
+  {
+    path: 'k8s/secret',
+    name: 'SecretManagement',
+    component: () => import('../views/k8s/SecretManagement.vue'),
+    meta: {
+      title: 'Secret管理',
+      icon: 'Key',
+      instanceType: 'kubernetes'
+    }
+  },
+  {
+    path: 'k8s/event',
+    name: 'EventManagement',
+    component: () => import('../views/k8s/EventManagement.vue'),
+    meta: {
+      title: '事件管理',
+      icon: 'BellFilled',
+      instanceType: 'kubernetes'
+    }
+  },
+  {
     path: 'k8s/cronjob',
     name: 'CronJobManagement',
     component: () => import('../views/k8s/CronJobManagement.vue'),

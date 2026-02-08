@@ -23,6 +23,7 @@
             <el-icon><Plus /></el-icon>
             创建 Pod
           </el-button>
+
         </div>
       </div>
     </el-card>
@@ -66,12 +67,16 @@
               {{ formatTimestamp(scope.row.age) }}
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="200" fixed="right">
+          <el-table-column label="操作" width="280" fixed="right">
             <template #default="scope">
               <el-button-group>
                 <el-button size="small" @click="handleViewDetail(scope.row)">
                   <el-icon><View /></el-icon>
                   详情
+                </el-button>
+                <el-button size="small" type="primary" @click="handleOpenTerminal(scope.row)">
+                  <el-icon><Monitor /></el-icon>
+                  终端
                 </el-button>
                 <el-button size="small" type="danger" @click="handleDelete(scope.row)">
                   <el-icon><Delete /></el-icon>
@@ -405,24 +410,35 @@
               v-for="(event, index) in podEvents"
               :key="index"
               :timestamp="formatEventTime(event.lastTimestamp)"
-              :type="getEventType(event.type)"
+              placement="top"
             >
-              <el-card>
-                <h4>{{ event.type }}: {{ event.reason }}</h4>
-                <p>{{ event.message }}</p>
-                <div class="event-source">
-                  来源: {{ event.source.component || event.source.host || 'unknown' }}
+              <div class="event-item">
+                <div class="event-header">
+                  <el-tag 
+                    :type="getEventTagType(event.type)" 
+                    size="small"
+                    effect="plain"
+                  >
+                    {{ event.type }}
+                  </el-tag>
+                  <span class="event-reason">{{ event.reason }}</span>
                 </div>
-              </el-card>
+                <div class="event-message">{{ event.message }}</div>
+                <div class="event-source">
+                  <el-icon><InfoFilled /></el-icon>
+                  {{ event.source.component || event.source.host || 'unknown' }}
+                </div>
+              </div>
             </el-timeline-item>
           </el-timeline>
           <div v-else class="no-data">暂无事件</div>
         </el-tab-pane>
 
+
         <el-tab-pane label="日志" name="logs">
           <div class="log-container">
             <div class="log-toolbar">
-              <el-select v-model="selectedContainer" placeholder="选择容器" style="width: 200px;">
+              <el-select v-model="selectedContainer" placeholder="选择容器" style="width: 150px;" @change="handleContainerChange">
                 <el-option
                   v-for="container in currentPod.containers || []"
                   :key="container.name"
@@ -430,22 +446,47 @@
                   :value="container.name"
                 />
               </el-select>
-              <el-button @click="refreshLogs" :loading="loadingLogs">
-                <el-icon><Refresh /></el-icon>
-                刷新
-              </el-button>
-              <el-button @click="downloadLogs">
-                <el-icon><Download /></el-icon>
-                下载
-              </el-button>
+              
+              <el-select v-model="logTailLines" placeholder="显示行数" style="width: 120px;" @change="handleTailLinesChange">
+                <el-option label="最后 10 行" :value="10" />
+                <el-option label="最后 50 行" :value="50" />
+                <el-option label="最后 100 行" :value="100" />
+                <el-option label="最后 500 行" :value="500" />
+                <el-option label="全部" :value="0" />
+              </el-select>
+              
               <el-switch
                 v-model="followLogs"
                 active-text="实时跟踪"
                 inactive-text="停止跟踪"
               />
+              <el-switch
+                v-model="showTimestamps"
+                active-text="显示时间戳"
+                inactive-text="隐藏时间戳"
+                @change="handleTimestampToggle"
+              />
+              
+              <div style="flex: 1;"></div>
+              
+              <el-button @click="refreshLogs" :loading="loadingLogs" size="small">
+                <el-icon><Refresh /></el-icon>
+                刷新
+              </el-button>
+              <el-button @click="clearLogs" size="small">
+                <el-icon><Delete /></el-icon>
+                清空
+              </el-button>
+              <el-button @click="downloadLogs" size="small">
+                <el-icon><Download /></el-icon>
+                下载
+              </el-button>
             </div>
-            <div class="log-content" ref="logContentRef">
-              <pre>{{ podLogs }}</pre>
+            <div class="log-content-wrapper">
+              <div class="log-content" ref="logContentRef">
+                <pre v-if="podLogs" class="kubectl-style-logs">{{ podLogs }}</pre>
+                <div v-else class="no-logs">暂无日志</div>
+              </div>
             </div>
           </div>
         </el-tab-pane>
@@ -455,18 +496,52 @@
         <el-button @click="showDetailDialog = false">关闭</el-button>
       </template>
     </el-dialog>
+
+    <!-- 容器选择对话框 -->
+    <el-dialog v-model="showContainerSelectDialog" title="选择容器" width="400px">
+      <el-select 
+        v-model="selectedContainerForTerminal" 
+        placeholder="请选择要连接的容器"
+        style="width: 100%;"
+        size="large"
+      >
+        <el-option
+          v-for="container in containerSelectList"
+          :key="container"
+          :label="container"
+          :value="container"
+        />
+      </el-select>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="showContainerSelectDialog = false">取消</el-button>
+          <el-button type="primary" @click="confirmContainerSelect" :disabled="!selectedContainerForTerminal">连接</el-button>
+        </div>
+      </template>
+    </el-dialog>
+
+    <!-- 容器终端 -->
+    <PodTerminal
+      v-model="showTerminalDialog"
+      :namespace="terminalPod.namespace"
+      :pod-name="terminalPod.podName"
+      :container-name="terminalPod.containerName"
+      :instance-id="getSelectedInstanceId()"
+      @close="handleTerminalClose"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, watch, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, View, Delete, Refresh, Download } from '@element-plus/icons-vue'
+import { Plus, View, Delete, Refresh, Download, Monitor } from '@element-plus/icons-vue'
 import { getPodList, getPodDetail, getPodEvents, getPodLogs, createPod, deletePod } from '@/api/k8s/pod'
 import { getSelectedInstanceId } from '@/stores/instanceStore'
 import { getNamespaceList } from '@/api/k8s/namespace'
 import yaml from 'js-yaml'
 import eventBus from '@/utils/eventBus'
+import PodTerminal from '@/components/PodTerminal.vue'
 
 const loading = ref(false)
 const submitting = ref(false)
@@ -487,9 +562,25 @@ const podLogs = ref('')
 const selectedContainer = ref('')
 const loadingLogs = ref(false)
 const followLogs = ref(false)
+const showTimestamps = ref(false)
+const logTailLines = ref(10)
 const logContentRef = ref(null)
 const activeContainers = ref([])
 let logWebSocket = null
+
+// 终端相关
+const showTerminalDialog = ref(false)
+const terminalPod = ref({
+  namespace: '',
+  podName: '',
+  containerName: ''
+})
+
+// 容器选择对话框
+const showContainerSelectDialog = ref(false)
+const containerSelectPod = ref(null)
+const containerSelectList = ref([])
+const selectedContainerForTerminal = ref('')
 
 const createForm = ref({
   namespace: 'default',
@@ -849,6 +940,17 @@ const getEventType = (type) => {
   }
 }
 
+const getEventTagType = (type) => {
+  switch (type) {
+    case 'Normal':
+      return 'success'
+    case 'Warning':
+      return 'warning'
+    default:
+      return 'danger'
+  }
+}
+
 const formatEventTime = (timestamp) => {
   if (!timestamp) return '-'
   return new Date(timestamp).toLocaleString('zh-CN')
@@ -873,11 +975,13 @@ const fetchPodLogs = async (namespace, podName, instanceId) => {
   try {
     const options = {
       follow: followLogs.value,
-      tailLines: 100,
-      timestamps: true
+      tailLines: logTailLines.value === 0 ? undefined : logTailLines.value,
+      timestamps: showTimestamps.value
     }
     const response = await getPodLogs(namespace, podName, selectedContainer.value, instanceId, options)
-    podLogs.value = response.data?.logs || ''
+    
+    // 正确的路径是 response.data.logs.logs
+    podLogs.value = response.data?.logs?.logs || response.data?.logs || ''
     
     // 如果是实时跟踪模式，滚动到底部
     if (followLogs.value && logContentRef.value) {
@@ -898,7 +1002,10 @@ const fetchPodLogs = async (namespace, podName, instanceId) => {
 
 // 刷新日志
 const refreshLogs = () => {
-  if (currentPod.value) {
+  podLogs.value = ''
+  if (followLogs.value) {
+    startLogStream()
+  } else if (currentPod.value) {
     const instanceId = getSelectedInstanceId() || '1'
     fetchPodLogs(currentPod.value.namespace, currentPod.value.name, instanceId)
   }
@@ -954,20 +1061,45 @@ const startLogStream = () => {
   
   const instanceId = getSelectedInstanceId() || '1'
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  // 使用当前主机，通过nginx代理连接
-  const wsUrl = `${protocol}//${window.location.host}/ws/pod/${currentPod.value.name}/logs?namespace=${currentPod.value.namespace}&instance_id=${instanceId}&container=${selectedContainer.value}&follow=true&timestamps=true`
+  const tailParam = logTailLines.value === 0 ? 0 : logTailLines.value
+  const wsUrl = `${protocol}//${window.location.hostname}:8081/ws/pod/${currentPod.value.name}/logs?namespace=${currentPod.value.namespace}&instance_id=${instanceId}&container=${selectedContainer.value}&follow=true&timestamps=${showTimestamps.value}&tail=${tailParam}`
   
   logWebSocket = new WebSocket(wsUrl)
   
   logWebSocket.onopen = () => {
     console.log('WebSocket日志连接已建立')
+    podLogs.value = '' // 清空之前的日志
   }
   
   logWebSocket.onmessage = (event) => {
-    const data = JSON.parse(event.data)
-    if (data.type === 'log') {
-      podLogs.value += data.content
+    // 调试：打印原始数据
+    console.log('收到日志数据:', event.data)
+    
+    try {
+      const data = JSON.parse(event.data)
+      console.log('解析后的数据:', data)
+      
+      if (data.type === 'log' && data.content) {
+        // 直接追加日志内容
+        podLogs.value += data.content
+      } else if (data.logs) {
+        // 如果是 {logs: "..."} 格式
+        podLogs.value += data.logs
+      } else if (typeof data === 'string') {
+        // 如果整个对象就是字符串
+        podLogs.value += data
+      }
+      
       // 自动滚动到底部
+      nextTick(() => {
+        if (logContentRef.value) {
+          logContentRef.value.scrollTop = logContentRef.value.scrollHeight
+        }
+      })
+    } catch (e) {
+      console.log('JSON解析失败，使用原始数据:', e)
+      // 如果不是 JSON，直接追加原始内容
+      podLogs.value += event.data
       nextTick(() => {
         if (logContentRef.value) {
           logContentRef.value.scrollTop = logContentRef.value.scrollHeight
@@ -994,6 +1126,42 @@ const stopLogStream = () => {
     logWebSocket = null
   }
 }
+
+// 清空日志
+const clearLogs = () => {
+  podLogs.value = ''
+}
+
+// 容器切换时重新加载日志
+const handleContainerChange = () => {
+  podLogs.value = ''
+  if (followLogs.value) {
+    startLogStream()
+  }
+}
+
+// 日志行数切换时重新加载
+const handleTailLinesChange = () => {
+  podLogs.value = ''
+  if (followLogs.value) {
+    startLogStream()
+  } else {
+    refreshLogs()
+  }
+}
+
+// 时间戳开关切换时重新连接
+const handleTimestampToggle = () => {
+  podLogs.value = ''
+  if (followLogs.value) {
+    // 实时跟踪模式：重新连接 WebSocket
+    startLogStream()
+  } else {
+    // 非实时模式：重新获取日志
+    refreshLogs()
+  }
+}
+
 
 const fetchNamespaceList = async () => {
   try {
@@ -1144,6 +1312,63 @@ const handleViewDetail = async (pod) => {
     const errorMsg = error.response?.data?.message || error.message || '获取 Pod 详情失败'
     ElMessage.error(errorMsg)
   }
+}
+
+// 打开容器终端
+const handleOpenTerminal = async (pod) => {
+  try {
+    // 先获取Pod详情以获得容器信息
+    const instanceId = getSelectedInstanceId() || '1'
+    const namespace = pod.namespace || 'default'
+    const res = await getPodDetail(namespace, pod.name, instanceId)
+    
+    if (res.status !== 200 || !res.data.podDetail) {
+      ElMessage.error('获取 Pod 详情失败')
+      return
+    }
+    
+    const podDetail = res.data.podDetail
+    const containers = podDetail.containers || []
+    
+    if (containers.length === 0) {
+      ElMessage.error('Pod 没有可用的容器')
+      return
+    }
+    
+    // 如果Pod有多个容器，显示选择对话框
+    if (containers.length > 1) {
+      containerSelectPod.value = pod
+      containerSelectList.value = containers.map(c => c.name)
+      selectedContainerForTerminal.value = containers[0].name
+      showContainerSelectDialog.value = true
+    } else {
+      // 单容器直接打开
+      openTerminal(pod, containers[0].name)
+    }
+  } catch (error) {
+    ElMessage.error('打开终端失败: ' + (error.message || '未知错误'))
+  }
+}
+
+// 确认容器选择
+const confirmContainerSelect = () => {
+  if (containerSelectPod.value && selectedContainerForTerminal.value) {
+    showContainerSelectDialog.value = false
+    openTerminal(containerSelectPod.value, selectedContainerForTerminal.value)
+  }
+}
+
+const openTerminal = (pod, containerName) => {
+  terminalPod.value = {
+    namespace: pod.namespace,
+    podName: pod.name,
+    containerName: containerName
+  }
+  showTerminalDialog.value = true
+}
+
+const handleTerminalClose = () => {
+  showTerminalDialog.value = false
 }
 
 const handleDelete = async (pod) => {
@@ -1394,10 +1619,39 @@ onMounted(() => {
   color: var(--el-text-color-secondary);
 }
 
+.event-item {
+  padding: 12px;
+  background-color: var(--el-fill-color-light);
+  border-radius: 6px;
+  border-left: 3px solid var(--el-color-primary);
+}
+
+.event-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.event-reason {
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+  font-size: 14px;
+}
+
+.event-message {
+  color: var(--el-text-color-regular);
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 6px;
+}
+
 .event-source {
   font-size: 12px;
   color: var(--el-text-color-secondary);
-  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 /* 日志容器样式 */
@@ -1412,27 +1666,42 @@ onMounted(() => {
   align-items: center;
   gap: 10px;
   margin-bottom: 10px;
-  padding: 10px;
+  padding: 12px;
   background-color: #f5f7fa;
   border-radius: 4px;
+  flex-wrap: wrap;
+}
+
+.log-content-wrapper {
+  flex: 1;
+  overflow: hidden;
+  background-color: #0d1117;
+  border-radius: 6px;
+  border: 1px solid #30363d;
 }
 
 .log-content {
-  flex: 1;
+  height: 100%;
   overflow: auto;
-  background-color: #1e1e1e;
-  border-radius: 4px;
-  padding: 15px;
+  padding: 10px 14px;
 }
 
-.log-content pre {
+.kubectl-style-logs {
   margin: 0;
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-  font-size: 12px;
-  line-height: 1.5;
-  color: #fff;
-  white-space: pre-wrap;
-  word-break: break-all;
+  font-family: 'Consolas', 'Monaco', 'Courier New', 'SFMono-Regular', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #c9d1d9;
+  white-space: pre;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.no-logs {
+  text-align: center;
+  color: #8b949e;
+  padding: 40px 20px;
+  font-size: 14px;
 }
 
 /* 折叠面板样式 */

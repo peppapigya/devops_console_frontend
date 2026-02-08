@@ -101,6 +101,9 @@
                       <div class="page-header">
                         <h2>实例管理</h2>
                         <div class="header-actions">
+                          <el-button size="small" @click="$router.push('/instances')">
+                             <el-icon><List /></el-icon>实例列表
+                          </el-button>
                           <el-button type="primary" size="small" @click="handleAddInstance">
                             <el-icon><Plus /></el-icon>添加实例
                           </el-button>
@@ -217,7 +220,7 @@ import {
   Sunny, Moon, House, DocumentCopy, Grid, CopyDocument, TrendCharts,
   Connection, Plus, List, Search, Refresh, Edit, ArrowRight,
   DataLine, WarningFilled, Delete, MoreFilled, Box, Files, Folder, FolderOpened, DataBoard, Timer,
-  Expand, Fold, CaretBottom, Cpu, Coin, Ticket, Share
+  Expand, Fold, CaretBottom, Cpu, Coin, Ticket, Share, Operation, Document, Key, BellFilled, Histogram
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -292,10 +295,26 @@ const allMenuRoutes = computed(() => {
     },
     {
        path: 'k8s-network',
-       meta: {title: '网络管理', icon: 'Connection'},
+       meta: {title: '服务发现', icon: 'Connection'},
        children: [
          {path: '/k8s/service', meta: {title: 'Services', icon: 'Connection', instanceType: 'kubernetes'}},
          {path: '/k8s/ingress', meta: {title: 'Ingress', icon: 'Share', instanceType: 'kubernetes'}},
+         {path: '/k8s/ingressclass', meta: {title: 'IngressClass', icon: 'Operation', instanceType: 'kubernetes'}},
+       ]
+    },
+    {
+       path: 'k8s-config',
+       meta: {title: '配置管理', icon: 'Document'},
+       children: [
+         {path: '/k8s/configmap', meta: {title: 'ConfigMap', icon: 'Document', instanceType: 'kubernetes'}},
+         {path: '/k8s/secret', meta: {title: 'Secret', icon: 'Key', instanceType: 'kubernetes'}},
+       ]
+    },
+    {
+       path: 'k8s-monitoring',
+       meta: {title: '监控与事件', icon: 'BellFilled'},
+       children: [
+         {path: '/k8s/event', meta: {title: '事件管理', icon: 'BellFilled', instanceType: 'kubernetes'}},
        ]
     },
     {

@@ -666,6 +666,7 @@ onMounted(() => {
   align-items: center;
   margin-bottom: 28px;
   padding: 8px 0;
+  flex-shrink: 0;
 }
 
 .page-header h2 {
@@ -689,6 +690,7 @@ onMounted(() => {
   border-radius: 16px;
   overflow: hidden;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  flex-shrink: 0;
 }
 
 .filter-card :deep(.el-card__body) {
