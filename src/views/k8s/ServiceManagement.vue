@@ -50,7 +50,7 @@
 
     <!-- Service列表 -->
     <el-card class="content-card">
-      <div class="table-container">
+      <div class="autoops-table-wrapper">
         <el-table
           v-loading="loading"
           :data="filteredServices"

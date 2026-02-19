@@ -1,320 +1,182 @@
 <template>
-  <div class="k8s-dashboard">
+  <div class="page-container">
     <el-card class="page-header-card">
       <div class="page-header">
-        <div>
-          <h2>Kubernetes 控制台</h2>
-          <p>集群概览和资源监控</p>
+        <div class="header-left">
+          <div class="header-icon-wrapper">
+            <el-icon :size="24"><Monitor /></el-icon>
+          </div>
+          <div class="header-title-wrapper">
+             <h2>Kubernetes 控制台</h2>
+             <p class="subtitle">系统概览与集群指标</p>
+          </div>
         </div>
-        <div class="header-actions">
-          <el-button @click="refreshData" :loading="refreshing">
+        <div class="header-right">
+          <el-button type="primary" :loading="refreshing" @click="refreshData">
             <el-icon><Refresh /></el-icon>
-            刷新
+            刷新数据
           </el-button>
         </div>
       </div>
     </el-card>
 
-    <!-- 核心指标卡片 -->
-    <el-row :gutter="20" class="metrics-row">
-      <el-col :span="6">
-        <el-card class="metric-card">
-          <div class="metric-content">
-            <div class="metric-icon nodes">
-              <el-icon size="32"><Monitor /></el-icon>
+    <!-- Metrics Grid -->
+    <el-row :gutter="20" class="mb-20">
+      <el-col :span="6" v-for="(metric, index) in [
+        { label: '总节点数', value: clusterMetrics.totalNodes, sub: `${clusterMetrics.readyNodes} 就绪`, icon: 'Monitor', color: 'bg-gradient-blue' },
+        { label: '活跃工作负载', value: clusterMetrics.totalPods, sub: `${clusterMetrics.totalPods} Pods 运行中`, icon: 'Box', color: 'bg-gradient-green' },
+        { label: 'CPU 分配', value: clusterMetrics.cpuUsage + '%', sub: `${clusterMetrics.cpuAvailable} / ${clusterMetrics.cpuTotal} 核`, icon: 'Cpu', color: 'bg-gradient-orange' },
+        { label: '内存分配', value: clusterMetrics.memoryUsage + '%', sub: `${clusterMetrics.memoryAvailable} / ${clusterMetrics.memoryTotal} Mi`, icon: 'Memo', color: 'bg-gradient-purple' }
+      ]" :key="index">
+        <el-card class="stat-card" shadow="hover">
+          <div class="stat-content">
+            <div class="stat-icon" :class="metric.color">
+              <component :is="metric.icon" />
             </div>
-            <div class="metric-info">
-              <div class="metric-value">{{ clusterMetrics.totalNodes }}</div>
-              <div class="metric-label">节点总数</div>
-              <div class="metric-sub">就绪: {{ clusterMetrics.readyNodes }}</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="6">
-        <el-card class="metric-card">
-          <div class="metric-content">
-            <div class="metric-icon pods">
-              <el-icon size="32"><Box /></el-icon>
-            </div>
-            <div class="metric-info">
-              <div class="metric-value">{{ clusterMetrics.totalPods }}</div>
-              <div class="metric-label">工作负载</div>
-              <div class="metric-sub">Pod: {{ clusterMetrics.totalPods }}</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="6">
-        <el-card class="metric-card">
-          <div class="metric-content">
-            <div class="metric-icon cpu">
-              <el-icon size="32"><Cpu /></el-icon>
-            </div>
-            <div class="metric-info">
-              <div class="metric-value">{{ clusterMetrics.cpuUsage }}%</div>
-              <div class="metric-label">CPU使用率</div>
-              <div class="metric-sub">{{ clusterMetrics.cpuAvailable }}核可用 / {{ clusterMetrics.cpuTotal }}核总量</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="6">
-        <el-card class="metric-card">
-          <div class="metric-content">
-            <div class="metric-icon memory">
-              <el-icon size="32"><Memo /></el-icon>
-            </div>
-            <div class="metric-info">
-              <div class="metric-value">{{ clusterMetrics.memoryUsage }}%</div>
-              <div class="metric-label">内存使用率</div>
-              <div class="metric-sub">{{ clusterMetrics.memoryAvailable }}Mi可用 / {{ clusterMetrics.memoryTotal }}Mi总量</div>
+            <div class="stat-info">
+              <div class="stat-value">{{ metric.value }}</div>
+              <div class="stat-label">{{ metric.label }}</div>
+              <div class="stat-sub">{{ metric.sub }}</div>
             </div>
           </div>
         </el-card>
       </el-col>
     </el-row>
 
-    <!-- 集群概览 -->
-    <el-row :gutter="20" class="overview-row">
-      <el-col :span="12">
-        <el-card class="cluster-overview-card">
+    <el-row :gutter="20" class="main-content-row">
+      <!-- Left Column -->
+      <el-col :span="16">
+        <!-- Cluster Overview -->
+        <el-card class="content-card mb-20">
           <template #header>
-            <div class="card-header">
-              <el-icon><Connection /></el-icon>
+            <div class="flex-between">
               <span>集群概览</span>
+              <el-button link type="primary" @click="navigateTo('/k8s/cluster')">管理集群</el-button>
             </div>
           </template>
-          <div class="cluster-overview">
-            <el-empty v-if="clusterList.length === 0" description="暂无集群信息">
-              <el-button type="primary" @click="navigateTo('/k8s/cluster')">
-                添加集群
-              </el-button>
+          <div class="cluster-list-container">
+            <el-empty v-if="clusterList.length === 0" description="未连接集群">
+              <el-button type="primary" @click="navigateTo('/k8s/cluster')">初始化集群</el-button>
             </el-empty>
-            <div v-else class="cluster-list">
+            <div v-else class="cluster-grid">
               <div v-for="cluster in clusterList" :key="cluster.id" class="cluster-item" @click="viewClusterDetail(cluster)">
+                <div class="cluster-status" :class="cluster.status === 'active' ? 'active' : 'inactive'"></div>
                 <div class="cluster-info">
                   <div class="cluster-name">{{ cluster.cluster_name }}</div>
-                  <div class="cluster-meta">
-                    <el-tag :type="cluster.status === 'active' ? 'success' : 'info'" size="small">
-                      {{ cluster.status === 'active' ? '已连接' : '未连接' }}
-                    </el-tag>
-                    <span class="cluster-time">最后同步: {{ cluster.last_sync || '未知' }}</span>
-                  </div>
+                  <div class="cluster-meta">最近同步: {{ cluster.last_sync || '未知' }}</div>
                 </div>
                 <div class="cluster-actions">
-                  <el-button size="small" @click.stop="handleTestConnection(cluster)">
-                    <el-icon><View /></el-icon>
-                    测试
-                  </el-button>
-                  <el-button size="small" @click.stop="handleChangeCluster(cluster)">
-                    <el-icon><RefreshRight /></el-icon>
-                    切换
-                  </el-button>
+                   <el-button link type="primary" @click.stop="handleTestConnection(cluster)">测试连接</el-button>
+                   <el-button link type="primary" @click.stop="handleChangeCluster(cluster)">切换</el-button>
                 </div>
               </div>
             </div>
           </div>
         </el-card>
-      </el-col>
-      <el-col :span="12">
-        <el-card class="workload-card">
+
+        <!-- Workload Stats -->
+        <el-card class="content-card">
           <template #header>
-            <div class="card-header">
-              <el-icon><DataAnalysis /></el-icon>
+            <div class="flex-between">
               <span>工作负载统计</span>
             </div>
           </template>
-          <div class="workload-stats">
-            <div class="stat-grid">
-              <div class="stat-item">
-                <div class="stat-icon deployment">
-                  <el-icon><Files /></el-icon>
-                </div>
-                <div class="stat-info">
-                  <div class="stat-number">{{ workloadStats.deployments }}</div>
-                  <div class="stat-name">Deployments</div>
-                </div>
-              </div>
-              <div class="stat-item">
-                <div class="stat-icon statefulset">
-                  <el-icon><Collection /></el-icon>
-                </div>
-                <div class="stat-info">
-                  <div class="stat-number">{{ workloadStats.statefulSets }}</div>
-                  <div class="stat-name">StatefulSets</div>
-                </div>
-              </div>
-              <div class="stat-item">
-                <div class="stat-icon daemonset">
-                  <el-icon><Operation /></el-icon>
-                </div>
-                <div class="stat-info">
-                  <div class="stat-number">{{ workloadStats.daemonSets }}</div>
-                  <div class="stat-name">DaemonSets</div>
-                </div>
-              </div>
-              <div class="stat-item">
-                <div class="stat-icon job">
-                  <el-icon><Timer /></el-icon>
-                </div>
-                <div class="stat-info">
-                  <div class="stat-number">{{ workloadStats.jobs }}</div>
-                  <div class="stat-name">Jobs</div>
-                </div>
-              </div>
-              <div class="stat-item">
-                <div class="stat-icon total-pods">
-                  <el-icon><Box /></el-icon>
-                </div>
-                <div class="stat-info">
-                  <div class="stat-number">{{ workloadStats.totalPods }}</div>
-                  <div class="stat-name">总Pod数</div>
-                </div>
-              </div>
-              <div class="stat-item">
-                <div class="stat-icon running-pods">
-                  <el-icon><VideoPlay /></el-icon>
-                </div>
-                <div class="stat-info">
-                  <div class="stat-number">{{ workloadStats.runningPods }}</div>
-                  <div class="stat-name">运行中Pod</div>
-                </div>
-              </div>
+          <div class="workload-grid">
+            <div class="workload-item" v-for="(stat, key) in {
+              'Deployments': workloadStats.deployments,
+              'StatefulSets': workloadStats.statefulSets,
+              'DaemonSets': workloadStats.daemonSets,
+              'Jobs': workloadStats.jobs,
+              'Total Pods': workloadStats.totalPods,
+              'Running': workloadStats.runningPods
+            }" :key="key">
+              <div class="workload-value">{{ stat }}</div>
+              <div class="workload-label">{{ key }}</div>
             </div>
           </div>
         </el-card>
       </el-col>
-    </el-row>
 
-    <!-- 快速操作和资源状态 -->
-    <el-row :gutter="20" class="actions-row">
-      <el-col :span="12">
-        <el-card class="quick-actions-card">
+      <!-- Right Column -->
+      <el-col :span="8">
+        <!-- Quick Actions -->
+        <el-card class="content-card mb-20">
           <template #header>
-            <div class="card-header">
-              <el-icon><Menu /></el-icon>
-              <span>快速操作</span>
-            </div>
+            <span>快捷操作</span>
           </template>
-          <div class="quick-actions">
-            <el-button type="primary" @click="navigateTo('/k8s/cluster')">
-              <el-icon><Setting /></el-icon>
-              管理集群
-            </el-button>
-            <el-button type="success" @click="navigateTo('/k8s/pod')">
-              <el-icon><Box /></el-icon>
-              管理 Pod
-            </el-button>
-            <el-button type="warning" @click="navigateTo('/k8s/deployment')">
-              <el-icon><Files /></el-icon>
-              管理 Deployment
-            </el-button>
-            <el-button type="info" @click="navigateTo('/k8s/namespace')">
-              <el-icon><Folder /></el-icon>
-              管理命名空间
-            </el-button>
-            <el-button type="danger" @click="navigateTo('/k8s/service')">
-              <el-icon><Connection /></el-icon>
-              管理 Service
-            </el-button>
-            <el-button type="primary" plain @click="navigateTo('/k8s/cronjob')">
-              <el-icon><Clock /></el-icon>
-              管理 CronJob
-            </el-button>
+          <div class="quick-actions-grid">
+             <div class="action-btn" @click="navigateTo('/k8s/cluster')">
+               <el-icon class="action-btn-icon bg-blue-100 text-blue-500"><Setting /></el-icon>
+               <span>Cluster</span>
+             </div>
+             <div class="action-btn" @click="navigateTo('/k8s/pod')">
+               <el-icon class="action-btn-icon bg-green-100 text-green-500"><Box /></el-icon>
+               <span>Pods</span>
+             </div>
+             <div class="action-btn" @click="navigateTo('/k8s/deployment')">
+               <el-icon class="action-btn-icon bg-orange-100 text-orange-500"><Files /></el-icon>
+               <span>Deploy</span>
+             </div>
+             <div class="action-btn" @click="navigateTo('/k8s/namespace')">
+               <el-icon class="action-btn-icon bg-purple-100 text-purple-500"><Folder /></el-icon>
+               <span>Namespace</span>
+             </div>
+             <div class="action-btn" @click="navigateTo('/k8s/service')">
+               <el-icon class="action-btn-icon bg-cyan-100 text-cyan-500"><Connection /></el-icon>
+               <span>Service</span>
+             </div>
+             <div class="action-btn" @click="navigateTo('/k8s/cronjob')">
+               <el-icon class="action-btn-icon bg-pink-100 text-pink-500"><Clock /></el-icon>
+               <span>CronJob</span>
+             </div>
           </div>
         </el-card>
-      </el-col>
-      <el-col :span="12">
-        <el-card class="resource-status-card">
-          <template #header>
-            <div class="card-header">
-              <el-icon><Monitor /></el-icon>
-              <span>资源状态</span>
-            </div>
-          </template>
-          <div class="resource-status">
-            <div class="status-item">
-              <div class="status-indicator healthy"></div>
-              <div class="status-info">
-                <div class="status-label">健康节点</div>
-                <div class="status-value">{{ resourceStatus.healthyNodes }}/{{ resourceStatus.totalNodes }}</div>
-              </div>
-            </div>
-            <div class="status-item">
-              <div class="status-indicator warning"></div>
-              <div class="status-info">
-                <div class="status-label">警告Pod</div>
-                <div class="status-value">{{ resourceStatus.warningPods }}</div>
-              </div>
-            </div>
-            <div class="status-item">
-              <div class="status-indicator error"></div>
-              <div class="status-info">
-                <div class="status-label">失败Pod</div>
-                <div class="status-value">{{ resourceStatus.failedPods }}</div>
-              </div>
-            </div>
-            <div class="status-item">
-              <div class="status-indicator pending"></div>
-              <div class="status-info">
-                <div class="status-label">待处理</div>
-                <div class="status-value">{{ resourceStatus.pendingPods }}</div>
-              </div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
 
-    <!-- 存储信息 -->
-    <el-row :gutter="20" class="storage-row">
-      <el-col :span="24">
-        <el-card class="storage-card">
+        <!-- Resource Health -->
+        <el-card class="content-card mb-20">
           <template #header>
-            <div class="card-header">
-              <el-icon><FolderOpened /></el-icon>
-              <span>存储信息</span>
-            </div>
+            <span>资源健康状况</span>
           </template>
-          <div class="storage-stats">
-            <div class="storage-item">
-              <div class="storage-icon">
-                <el-icon><Document /></el-icon>
-              </div>
-              <div class="storage-info">
-                <div class="storage-value">{{ storageInfo.totalPV }}</div>
-                <div class="storage-label">PV总数</div>
-              </div>
+          <div class="health-list">
+            <div class="health-item">
+               <div class="health-icon success"><el-icon><Check /></el-icon></div>
+               <div class="health-text">健康节点</div>
+               <div class="health-val">{{ resourceStatus.healthyNodes }} / {{ resourceStatus.totalNodes }}</div>
             </div>
-            <div class="storage-item">
-              <div class="storage-icon">
-                <el-icon><Folder /></el-icon>
-              </div>
-              <div class="storage-info">
-                <div class="storage-value">{{ storageInfo.totalPVC }}</div>
-                <div class="storage-label">PVC总数</div>
-              </div>
+            <div class="health-item" :class="{ 'warning': resourceStatus.warningPods > 0 }">
+               <div class="health-icon warning"><el-icon><Warning /></el-icon></div>
+               <div class="health-text">警告 Pods</div>
+               <div class="health-val">{{ resourceStatus.warningPods }}</div>
             </div>
-            <div class="storage-item">
-              <div class="storage-icon">
-                <el-icon><Coin /></el-icon>
-              </div>
-              <div class="storage-info">
-                <div class="storage-value">{{ storageInfo.storageClasses }}</div>
-                <div class="storage-label">存储类</div>
-              </div>
-            </div>
-            <div class="storage-item">
-              <div class="storage-icon">
-                <el-icon><PieChart /></el-icon>
-              </div>
-              <div class="storage-info">
-                <div class="storage-value">{{ storageInfo.usedStorage }}Gi</div>
-                <div class="storage-label">已用存储</div>
-              </div>
+            <div class="health-item" :class="{ 'error': resourceStatus.failedPods > 0 }">
+               <div class="health-icon error"><el-icon><Close /></el-icon></div>
+               <div class="health-text">失败 Pods</div>
+               <div class="health-val">{{ resourceStatus.failedPods }}</div>
             </div>
           </div>
+        </el-card>
+
+        <!-- Storage Overview -->
+        <el-card class="content-card">
+           <template #header>
+              <span>存储概览</span>
+            </template>
+            <div class="storage-list">
+               <div class="storage-item" v-for="(item, index) in [
+                 { label: 'PV 总数', value: storageInfo.totalPV, icon: 'Document' },
+                 { label: 'PVC 总数', value: storageInfo.totalPVC, icon: 'Folder' },
+                 { label: 'Storage Classes', value: storageInfo.storageClasses, icon: 'Coin' },
+                 { label: '已用存储', value: storageInfo.usedStorage + ' Gi', icon: 'PieChart' }
+               ]" :key="index">
+                 <div class="storage-icon-wrapper">
+                    <el-icon><component :is="item.icon" /></el-icon>
+                 </div>
+                 <div class="storage-info">
+                   <div class="storage-val">{{ item.value }}</div>
+                   <div class="storage-lbl">{{ item.label }}</div>
+                 </div>
+               </div>
+            </div>
         </el-card>
       </el-col>
     </el-row>
@@ -328,7 +190,7 @@ import { ElMessage } from 'element-plus'
 import {
   Monitor, Box, Files, Connection, Setting, Folder, Refresh, Cpu, Memo,
   DataAnalysis, Collection, Operation, Timer, VideoPlay, Menu, Clock,
-  FolderOpened, Document, Coin, PieChart, View, RefreshRight
+  FolderOpened, Document, Coin, PieChart, View, RefreshRight, Check, Warning, Close
 } from '@element-plus/icons-vue'
 import { getClusterList, changeCluster, testClusterConnection } from '@/api/k8s/cluster'
 import { getClusterMetrics, getClusterInfo } from '@/api/k8s/cluster-info'
@@ -426,15 +288,11 @@ const fetchDashboardData = async () => {
   try {
     const instanceId = getSelectedInstanceId() || '1'
     const response = await getClusterList(instanceId)
-    console.log('集群列表响应:', response)
     clusterList.value = response.data?.clasters || []
 
-    // 获取集群基本信息
     const infoResponse = await getClusterInfo(instanceId)
-    console.log('集群信息响应:', infoResponse)
     clusterInfo.value = infoResponse.data?.clusterInfo || {}
 
-    // 获取集群指标数据
     const metricsResponse = await getClusterMetrics(instanceId)
     const metrics = metricsResponse.data?.metrics
     
@@ -454,400 +312,258 @@ const fetchDashboardData = async () => {
       workloadStats.value = metrics.workloadStats
       storageInfo.value = metrics.storageInfo
 
-      // 计算资源状态
       resourceStatus.value = {
         totalNodes: metrics.totalNodes,
         healthyNodes: metrics.readyNodes,
-        warningPods: 1, // 这些需要从Pod状态中计算
-        failedPods: 0,
-        pendingPods: metrics.totalPods - metrics.workloadStats.runningPods
+        warningPods: metrics.workloadStats.unknownPods || 0,
+        failedPods: metrics.workloadStats.failedPods || 0,
+        pendingPods: metrics.workloadStats.pendingPods || 0
       }
     }
 
   } catch (error) {
     console.error('获取仪表板数据失败:', error)
-    console.error('错误详情:', error.response?.data)
     ElMessage.error('获取数据失败: ' + (error.message || '未知错误'))
   }
 }
 
-// 监听Pod操作事件
 const handlePodEvent = () => {
-  console.log('检测到Pod操作，刷新仪表板数据')
   fetchDashboardData()
 }
 
 onMounted(() => {
   fetchDashboardData()
-  
-  // 添加事件监听器
   eventBus.on('pod:created', handlePodEvent)
   eventBus.on('pod:deleted', handlePodEvent)
 })
 
 onUnmounted(() => {
-  // 组件卸载时移除事件监听器
   eventBus.off('pod:created', handlePodEvent)
   eventBus.off('pod:deleted', handlePodEvent)
 })
 </script>
 
 <style scoped>
-.k8s-dashboard {
-  padding: 20px;
-  background-color: #f5f7fa;
-  min-height: 100vh;
-}
-
-.page-header-card {
-  margin-bottom: 20px;
+.header-icon-wrapper {
+  width: 40px;
+  height: 40px;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.page-header h2 {
-  margin: 0 0 8px 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: #2d3748;
-}
-
-.page-header p {
-  margin: 0;
-  color: #718096;
-}
-
-.header-actions {
-  display: flex;
-  gap: 12px;
-}
-
-.metrics-row {
-  margin-bottom: 20px;
-}
-
-.metric-card {
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-  border: none;
-  height: 120px;
-}
-
-.metric-content {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  height: 100%;
-}
-
-.metric-icon {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
+  background: var(--primary-color);
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
 }
 
-.metric-icon.nodes {
-  background: linear-gradient(135deg, #6b46c1 0%, #9333ea 100%);
-}
-
-.metric-icon.pods {
-  background: linear-gradient(135deg, #ed64a6 0%, #f472b6 100%);
-}
-
-.metric-icon.cpu {
-  background: linear-gradient(135deg, #3182ce 0%, #60a5fa 100%);
-}
-
-.metric-icon.memory {
-  background: linear-gradient(135deg, #38a169 0%, #4ade80 100%);
-}
-
-.metric-info {
-  flex: 1;
-}
-
-.metric-value {
-  font-size: 24px;
-  font-weight: bold;
-  color: #1a1a1a;
-  line-height: 1.2;
-}
-
-.metric-label {
-  font-size: 14px;
-  color: #4a5568;
-  margin: 4px 0;
-}
-
-.metric-sub {
+.stat-sub {
   font-size: 12px;
-  color: #a0aec0;
+  color: var(--text-sub);
+  margin-top: 4px;
 }
 
-.overview-row {
-  margin-bottom: 20px;
-}
-
-.cluster-overview-card,
-.workload-card {
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-  border: none;
-  height: 300px;
-}
-
-.card-header {
+/* Cluster List */
+.cluster-list-container {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 600;
-  color: #2d3748;
-  font-size: 16px;
-}
-
-.cluster-list {
-  max-height: 220px;
-  overflow-y: auto;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .cluster-item {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   padding: 16px;
-  border-bottom: 1px solid #f0f0f0;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: #f8f9fa;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
 }
 
 .cluster-item:hover {
-  background-color: #f8f9fa;
+  background: #fff;
+  box-shadow: var(--shadow-sm);
+  border-color: var(--primary-color);
 }
 
-.cluster-item:last-child {
-  border-bottom: none;
+.cluster-status {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 12px;
 }
+
+.cluster-status.active { background-color: var(--success-color); box-shadow: 0 0 4px var(--success-color); }
+.cluster-status.inactive { background-color: var(--info-color); }
 
 .cluster-info {
   flex: 1;
 }
 
 .cluster-name {
-  font-weight: 500;
-  color: #2d3748;
-  margin-bottom: 4px;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-main);
 }
 
 .cluster-meta {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.cluster-time {
   font-size: 12px;
-  color: #a0aec0;
+  color: var(--text-sub);
+  margin-top: 2px;
 }
 
-.cluster-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.workload-stats {
-  padding: 0;
-}
-
-.stat-grid {
+/* Workload Stats */
+.workload-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 16px;
-  padding: 16px;
 }
 
-.stat-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
+.workload-item {
   background: #f8f9fa;
-  border-radius: 6px;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  text-align: center;
+  border: 1px solid transparent;
+  transition: all 0.2s;
 }
 
-.stat-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
+.workload-item:hover {
+  background: #fff;
+  border-color: var(--border-color);
+  box-shadow: var(--shadow-sm);
 }
 
-.stat-icon.deployment {
-  background: #3182ce;
+.workload-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 4px;
 }
 
-.stat-icon.statefulset {
-  background: #38a169;
-}
-
-.stat-icon.daemonset {
-  background: #dd6b20;
-}
-
-.stat-icon.job {
-  background: #e53e3e;
-}
-
-.stat-icon.total-pods {
-  background: #718096;
-}
-
-.stat-icon.running-pods {
-  background: #38a169;
-}
-
-.stat-info {
-  flex: 1;
-}
-
-.stat-number {
-  font-size: 18px;
-  font-weight: bold;
-  color: #1a1a1a;
-}
-
-.stat-name {
+.workload-label {
   font-size: 12px;
-  color: #666666;
+  color: var(--text-sub);
 }
 
-.actions-row {
-  margin-bottom: 20px;
-}
-
-.quick-actions-card,
-.resource-status-card {
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-  border: none;
-  height: 280px;
-}
-
-.quick-actions {
+/* Quick Actions */
+.quick-actions-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
-  padding: 16px;
 }
 
-.quick-actions .el-button {
-  height: 60px;
-  font-size: 14px;
+.action-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
-}
-
-.resource-status {
   padding: 16px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background-color 0.2s;
 }
 
-.status-item {
+.action-btn:hover {
+  background-color: #f8f9fa;
+}
+
+.action-btn-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+.action-btn span {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-main);
+}
+
+/* Colors for actions */
+.bg-blue-100 { background-color: #e3f2fd; }
+.text-blue-500 { color: #2196f3; }
+.bg-green-100 { background-color: #e8f5e9; }
+.text-green-500 { color: #4caf50; }
+.bg-orange-100 { background-color: #fff3e0; }
+.text-orange-500 { color: #ff9800; }
+.bg-purple-100 { background-color: #f3e5f5; }
+.text-purple-500 { color: #9c27b0; }
+.bg-cyan-100 { background-color: #e0f7fa; }
+.text-cyan-500 { color: #00bcd4; }
+.bg-pink-100 { background-color: #fce4ec; }
+.text-pink-500 { color: #e91e63; }
+
+/* Health List */
+.health-list {
+  display: flex;
+  flex-direction: column;
   gap: 12px;
-  padding: 12px 0;
-  border-bottom: 1px solid #f0f0f0;
 }
 
-.status-item:last-child {
-  border-bottom: none;
-}
-
-.status-indicator {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-}
-
-.status-indicator.healthy {
-  background-color: #38a169;
-}
-
-.status-indicator.warning {
-  background-color: #dd6b20;
-}
-
-.status-indicator.error {
-  background-color: #e53e3e;
-}
-
-.status-indicator.pending {
-  background-color: #718096;
-}
-
-.status-info {
-  flex: 1;
+.health-item {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: var(--radius-md);
 }
 
-.status-label {
-  font-size: 14px;
-  color: #4a5568;
-}
-
-.status-value {
-  font-size: 16px;
-  font-weight: bold;
-  color: #1a1a1a;
-}
-
-.storage-row {
-  margin-bottom: 20px;
-}
-
-.storage-card {
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-  border: none;
-}
-
-.storage-stats {
+.health-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
   display: flex;
-  gap: 24px;
-  padding: 16px;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+}
+
+.health-icon.success { background-color: #e8f5e9; color: #4caf50; }
+.health-icon.warning { background-color: #fff3e0; color: #ff9800; }
+.health-icon.error { background-color: #ffebee; color: #f44336; }
+
+.health-text {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-main);
+  font-weight: 500;
+}
+
+.health-val {
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+/* Storage List */
+.storage-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
 }
 
 .storage-item {
   display: flex;
   align-items: center;
   gap: 12px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: var(--radius-md);
 }
 
-.storage-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+.storage-icon-wrapper {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: var(--primary-color);
+  box-shadow: var(--shadow-sm);
 }
 
 .storage-info {
@@ -855,64 +571,14 @@ onUnmounted(() => {
   flex-direction: column;
 }
 
-.storage-value {
-  font-size: 24px;
-  font-weight: bold;
-  color: #1a1a1a;
-}
-
-.storage-label {
+.storage-val {
+  font-weight: 600;
+  color: var(--text-main);
   font-size: 14px;
-  color: #666666;
 }
 
-/* 响应式设计 */
-@media (max-width: 1200px) {
-  .stat-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  
-  .quick-actions {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 768px) {
-  .metrics-row .el-col {
-    margin-bottom: 16px;
-  }
-  
-  .overview-row .el-col {
-    margin-bottom: 16px;
-  }
-  
-  .actions-row .el-col {
-    margin-bottom: 16px;
-  }
-  
-  .stat-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .quick-actions {
-    grid-template-columns: 1fr;
-  }
-  
-  .storage-stats {
-    flex-direction: column;
-    gap: 16px;
-  }
-  
-  .cluster-item {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-  
-  .cluster-meta {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-  }
+.storage-lbl {
+  font-size: 11px;
+  color: var(--text-sub);
 }
 </style>

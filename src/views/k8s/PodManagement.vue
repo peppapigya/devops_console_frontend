@@ -29,10 +29,10 @@
     </el-card>
 
     <el-card class="content-card">
-      <div class="table-container">
+      <div class="autoops-table-wrapper">
         <el-table 
           :data="podList" 
-          style="width: 100%" 
+          style="width: 100%" class="autoops-table" 
           v-loading="loading"
           height="calc(100vh - 280px)"
           :empty-text="loading ? '加载中...' : '暂无数据'"
@@ -89,7 +89,7 @@
       </div>
     </el-card>
 
-    <el-dialog v-model="showCreateDialog" title="创建 Pod" width="900px" :close-on-click-modal="false">
+    <el-dialog v-model="showCreateDialog" title="创建 Pod" width="900px" :close-on-click-modal="false" destroy-on-close>
       <el-tabs v-model="activeTab" type="border-card">
         <el-tab-pane label="表单创建" name="form">
           <el-form :model="createForm" :rules="createRules" ref="createFormRef" label-width="120px">

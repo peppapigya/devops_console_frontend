@@ -1,164 +1,178 @@
 <template>
-  <div class="pipeline-editor-page">
+  <div class="page-container">
     <!-- Header -->
-    <div class="editor-header">
-       <div class="header-left">
-          <el-button link class="back-btn" @click="$router.back()">
-             <el-icon><ArrowLeft /></el-icon> 返回
-          </el-button>
-          <div class="header-title">
-             <h1 class="page-title">{{ form.name || (isEditMode ? '编辑流水线' : '新建流水线') }}</h1>
-             <span class="page-subtitle">{{ isEditMode ? 'Updating Configuration' : 'New Configuration' }}</span>
-          </div>
+    <el-card class="page-header-card">
+       <div class="page-header">
+         <div class="header-left">
+           <el-button link class="back-btn" @click="$router.back()">
+              <el-icon><ArrowLeft /></el-icon> 返回
+           </el-button>
+           <div class="header-title-wrapper ml-4">
+              <h2>{{ form.name || (isEditMode ? '编辑流水线' : '新建流水线') }}</h2>
+              <p class="subtitle">{{ isEditMode ? '更新配置' : '创建新配置' }}</p>
+           </div>
+         </div>
+         <div class="header-right">
+            <el-button @click="fetchData" v-if="isEditMode" :icon="Refresh">重置</el-button>
+            <el-button type="primary" @click="handleGlobalSave" :loading="savingGlobal" :icon="Check">保存全部配置</el-button>
+         </div>
        </div>
-       <div class="header-right">
-          <el-button class="cyber-button-ghost" @click="fetchData" v-if="isEditMode">
-             <el-icon><Refresh /></el-icon> 重置
-          </el-button>
-          <el-button type="primary" class="cyber-button blue" @click="handleGlobalSave" :loading="savingGlobal">
-             <el-icon><Check /></el-icon> 保存全部配置
-          </el-button>
-       </div>
-    </div>
+    </el-card>
 
-    <!-- Main Workspace -->
-    <div class="editor-workspace" v-loading="loadingData">
-       
+    <el-row :gutter="20" class="editor-workspace" v-loading="loadingData">
        <!-- Left Sidebar: Structure Tree -->
-       <div class="sidebar-panel glass-panel">
-          <div class="sidebar-header">
-             <span class="sh-title">配置结构</span>
-             <el-tooltip content="添加步骤" placement="top">
-                <el-button circle size="small" type="primary" @click="handleAddStep">
-                    <el-icon><Plus /></el-icon>
-                </el-button>
-             </el-tooltip>
-          </div>
+       <el-col :span="6">
+         <el-card class="content-card sidebar-panel">
+            <template #header>
+               <div class="flex-between">
+                  <span>配置结构</span>
+                  <el-tooltip content="添加步骤" placement="top">
+                     <el-button circle size="small" type="primary" @click="handleAddStep">
+                         <el-icon><Plus /></el-icon>
+                     </el-button>
+                  </el-tooltip>
+               </div>
+            </template>
 
-          <div class="structure-list">
-             <!-- Basic Settings Node -->
-             <div 
-                class="structure-item" 
-                :class="{ active: currentSelection === 'basic' }"
-                @click="currentSelection = 'basic'"
-             >
-                <div class="msg-icon basic-icon"><el-icon><Setting /></el-icon></div>
-                <div class="item-info">
-                   <div class="item-title">基础信息</div>
-                   <div class="item-desc">Git仓、分支、模板</div>
-                </div>
-             </div>
+            <div class="structure-list">
+               <!-- Basic Settings Node -->
+               <div 
+                  class="structure-item" 
+                  :class="{ active: currentSelection === 'basic' }"
+                  @click="currentSelection = 'basic'"
+               >
+                  <div class="item-icon basic-icon"><el-icon><Setting /></el-icon></div>
+                  <div class="item-info">
+                     <div class="item-title">基础信息</div>
+                     <div class="item-desc">Git仓、分支、模板</div>
+                  </div>
+               </div>
 
-             <div class="divider">流水线步骤</div>
-             
-             <!-- Steps List (Draggable) -->
-             <div class="steps-scroll-area">
-                <div 
-                    v-for="(step, index) in stepsList" 
-                    :key="step.tempId || step.id" 
-                    class="structure-item step-item"
-                    :class="{ active: currentSelection === 'step' && currentStepIndex === index }"
-                    @click="handleSelectStep(index)"
-                    draggable="true"
-                    @dragstart="onDragStart($event, index)"
-                    @dragover.prevent
-                    @dragenter.prevent
-                    @drop="onDrop($event, index)"
-                >
-                    <div class="drag-handle"><el-icon><Rank /></el-icon></div>
-                    <div class="step-idx">{{ index + 1 }}</div>
-                    <div class="item-info">
-                        <div class="item-title">{{ step.name || '未命名步骤' }}</div>
-                        <div class="item-desc">{{ step.image }}</div>
-                    </div>
-                     <el-button 
-                        link 
-                        type="danger" 
-                        class="delete-btn" 
-                        @click.stop="handleDeleteStep(index)"
-                    >
-                        <el-icon><Delete /></el-icon>
-                    </el-button>
-                </div>
-                 <div v-if="stepsList.length === 0" class="no-steps-hint">
-                    点击右上角 + 添加步骤
-                 </div>
-             </div>
-          </div>
-       </div>
+               <div class="divider">流水线步骤</div>
+               
+               <!-- Steps List (Draggable) -->
+               <div class="steps-scroll-area">
+                  <div v-if="stepsList.length === 0" class="no-steps-hint">
+                     点击右上角 + 添加步骤
+                  </div>
+                  <div 
+                      v-for="(step, index) in stepsList" 
+                      :key="step.tempId || step.id" 
+                      class="structure-item step-item"
+                      :class="{ active: currentSelection === 'step' && currentStepIndex === index }"
+                      @click="handleSelectStep(index)"
+                      draggable="true"
+                      @dragstart="onDragStart($event, index)"
+                      @dragover.prevent
+                      @dragenter.prevent
+                      @drop="onDrop($event, index)"
+                  >
+                      <div class="drag-handle"><el-icon><Rank /></el-icon></div>
+                      <div class="step-idx">{{ index + 1 }}</div>
+                      <div class="item-info">
+                          <div class="item-title">{{ step.name || '未命名步骤' }}</div>
+                          <div class="item-desc">{{ step.image }}</div>
+                      </div>
+                       <el-button 
+                          link 
+                          type="danger" 
+                          class="delete-btn" 
+                          @click.stop="handleDeleteStep(index)"
+                      >
+                          <el-icon><Delete /></el-icon>
+                      </el-button>
+                  </div>
+               </div>
+            </div>
+         </el-card>
+       </el-col>
 
        <!-- Right Panel: Dynamic Form -->
-       <div class="detail-panel glass-panel">
-          
-          <!-- Case 1: Basic Info Form -->
-          <div v-if="currentSelection === 'basic'" class="form-container">
-             <div class="panel-header">
-                <el-icon><Setting /></el-icon> 基础信息配置
-             </div>
-             <el-form :model="form" label-position="top" class="cyber-form">
-                 <el-form-item label="流水线名称" required>
-                    <el-input v-model="form.name" placeholder="请输入流水线名称" class="cyber-input" />
-                 </el-form-item>
-                 <el-form-item label="描述">
-                    <el-input v-model="form.description" type="textarea" :rows="3" placeholder="简要描述流水线功能" class="cyber-input" />
-                 </el-form-item>
-                 <div class="form-row">
-                     <el-form-item label="代码仓库 URL" required class="flex-1">
-                        <el-input v-model="form.gitUrl" placeholder="https://github.com/..." class="cyber-input">
-                            <template #prefix><el-icon><Connection /></el-icon></template>
-                        </el-input>
-                     </el-form-item>
-                     <el-form-item label="默认分支" required class="flex-1">
-                        <el-input v-model="form.branch" placeholder="main" class="cyber-input">
-                            <template #prefix><el-icon><bicycle /></el-icon></template>
-                        </el-input>
-                     </el-form-item>
-                 </div>
-                 <el-form-item label="Argo 模板" required>
-                    <el-input v-model="form.argoTemplate" placeholder="workflow-template-name" class="cyber-input">
-                        <template #prefix><el-icon><Cpu /></el-icon></template>
-                    </el-input>
-                 </el-form-item>
-             </el-form>
-          </div>
-
-          <!-- Case 2: Step Detail Form -->
-          <div v-else-if="currentSelection === 'step' && stepsList[currentStepIndex]" class="form-container">
-              <div class="panel-header">
-                 <div class="ph-left">
-                     <el-icon><Box /></el-icon> 步骤配置: <span class="highlight-text">{{ stepsList[currentStepIndex].name }}</span>
-                 </div>
-                 <span class="step-badge">Index: {{ currentStepIndex + 1 }}</span>
-              </div>
-              
-              <el-form label-position="top" class="cyber-form">
-                  <el-form-item label="步骤名称" required>
-                      <el-input v-model="stepsList[currentStepIndex].name" placeholder="例如: Check Code" class="cyber-input" />
-                  </el-form-item>
-                  <el-form-item label="运行镜像" required>
-                      <el-input v-model="stepsList[currentStepIndex].image" placeholder="例如: golang:1.18" class="cyber-input">
-                         <template #prefix><el-icon><Monitor /></el-icon></template>
+       <el-col :span="18">
+         <el-card class="content-card detail-panel">
+            <!-- Case 1: Basic Info Form -->
+            <div v-if="currentSelection === 'basic'" class="form-container">
+               <div class="panel-header-custom">
+                  <el-icon><Setting /></el-icon> <span>基础信息配置</span>
+               </div>
+               <el-form :model="form" label-position="top">
+                   <el-form-item label="流水线名称" required>
+                      <el-input v-model="form.name" placeholder="请输入流水线名称" />
+                   </el-form-item>
+                   <el-form-item label="描述">
+                      <el-input v-model="form.description" type="textarea" :rows="3" placeholder="简要描述流水线功能" />
+                   </el-form-item>
+                   <el-form-item label="目标集群" required>
+                      <el-select v-model="form.k8sInstanceId" placeholder="选择K8s集群">
+                          <el-option
+                             v-for="item in k8sInstanceList"
+                             :key="item.id"
+                             :label="item.name"
+                             :value="item.id"
+                          />
+                      </el-select>
+                   </el-form-item>
+                   <el-row :gutter="20">
+                       <el-col :span="12">
+                           <el-form-item label="代码仓库 URL" required>
+                              <el-input v-model="form.gitUrl" placeholder="https://github.com/...">
+                                  <template #prefix><el-icon><Connection /></el-icon></template>
+                              </el-input>
+                           </el-form-item>
+                       </el-col>
+                       <el-col :span="12">
+                           <el-form-item label="默认分支" required>
+                              <el-input v-model="form.branch" placeholder="main">
+                                  <template #prefix><el-icon><Bicycle /></el-icon></template>
+                              </el-input>
+                           </el-form-item>
+                       </el-col>
+                   </el-row>
+                   <el-form-item label="Argo 模板" required>
+                      <el-input v-model="form.argoTemplate" placeholder="workflow-template-name">
+                          <template #prefix><el-icon><Cpu /></el-icon></template>
                       </el-input>
-                  </el-form-item>
-                  <el-form-item label="Shell 命令">
-                      <el-input 
-                        v-model="stepsList[currentStepIndex].commands" 
-                        type="textarea" 
-                        :rows="12" 
-                        class="code-editor-input"
-                        placeholder="# 输入运行命令..." 
-                      />
-                  </el-form-item>
-              </el-form>
-          </div>
+                   </el-form-item>
+               </el-form>
+            </div>
 
-          <div v-else class="empty-selection">
-              <el-icon class="huge-icon"><Pointer /></el-icon>
-              <p>请在左侧选择要配置的项</p>
-          </div>
+            <!-- Case 2: Step Detail Form -->
+            <div v-else-if="currentSelection === 'step' && stepsList[currentStepIndex]" class="form-container">
+                <div class="panel-header-custom">
+                   <div class="ph-left">
+                       <el-icon><Box /></el-icon> 步骤配置: <span class="highlight-text">{{ stepsList[currentStepIndex].name }}</span>
+                   </div>
+                   <el-tag size="small" type="info">步骤 {{ currentStepIndex + 1 }}</el-tag>
+                </div>
+                
+                <el-form label-position="top">
+                    <el-form-item label="步骤名称" required>
+                        <el-input v-model="stepsList[currentStepIndex].name" placeholder="例如: Check Code" />
+                    </el-form-item>
+                    <el-form-item label="运行镜像" required>
+                        <el-input v-model="stepsList[currentStepIndex].image" placeholder="例如: golang:1.18">
+                           <template #prefix><el-icon><Monitor /></el-icon></template>
+                        </el-input>
+                    </el-form-item>
+                    <el-form-item label="Shell 命令">
+                        <el-input 
+                          v-model="stepsList[currentStepIndex].commands" 
+                          type="textarea" 
+                          :rows="12" 
+                          class="code-editor-input"
+                          placeholder="# 输入运行命令..." 
+                        />
+                    </el-form-item>
+                </el-form>
+            </div>
 
-       </div>
-    </div>
+            <div v-else class="empty-selection">
+                <el-icon class="huge-icon"><Pointer /></el-icon>
+                <p>请在左侧选择要配置的项</p>
+            </div>
+         </el-card>
+       </el-col>
+    </el-row>
   </div>
 </template>
 
@@ -166,10 +180,11 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { createPipeline, updatePipeline, getPipeline, getPipelineSteps, createPipelineStep, updatePipelineStep, deletePipelineStep } from '@/api/cicd.js'
+import { getInstanceList } from '@/api/instance.js'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
     ArrowLeft, Check, Setting, Connection, Cpu, Refresh,
-    Plus, Delete, Rank, Box, Monitor, Pointer
+    Plus, Delete, Rank, Box, Monitor, Pointer, Bicycle
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -191,8 +206,11 @@ const form = reactive({
     description: '',
     gitUrl: '',
     branch: 'main',
-    argoTemplate: ''
+    argoTemplate: '',
+    k8sInstanceId: null
 })
+
+const k8sInstanceList = ref([])
 
 const stepsList = ref([])
 const deletedStepIds = ref([]) // Track deleted steps for backend sync
@@ -210,6 +228,21 @@ const fetchData = async () => {
         ElMessage.error('加载流水线数据失败')
     } finally {
         loadingData.value = false
+    }
+}
+
+const fetchK8sInstances = async () => {
+    try {
+        const res = await getInstanceList({ page: 1, page_size: 100 })
+        const list = res.data?.list?.data || []
+        k8sInstanceList.value = list.filter(item => item.instance_type === 'kubernetes')
+        
+        // Default select first if not set
+        if (!form.k8sInstanceId && k8sInstanceList.value.length > 0) {
+            form.k8sInstanceId = k8sInstanceList.value[0].id
+        }
+    } catch (e) {
+        console.error('Fetch instances failed', e)
     }
 }
 
@@ -260,7 +293,7 @@ const onDrop = (e, index) => {
 
 // Global Save Logic
 const handleGlobalSave = async () => {
-    if (!form.name || !form.gitUrl || !form.argoTemplate) {
+    if (!form.name || !form.gitUrl || !form.argoTemplate || !form.k8sInstanceId) {
         ElMessage.warning('请完善基础信息')
         currentSelection.value = 'basic'
         return
@@ -273,25 +306,10 @@ const handleGlobalSave = async () => {
         if (pid) {
             await updatePipeline(pid, form)
         } else {
-            // Create pipeline
-            // NOTE: Backend needs to return ID.
-            // Assuming the current createPipeline API does standard JSON return
-            // We might need to fetch the list to find it if backend doesn't return ID?
-            // Let's hope your backend returns the created object or ID.
             const res = await createPipeline(form)
-            // If we can't get ID, we can't save steps.
-            // Usually backend returns { code: 200, data: { ...pipeline } } or similar
-            // If not, we have a problem.
-            // Fallback: If backend returns success but no ID, we might need to query by name?
-            // Let's check res structure if possible.
-            // For now, assuming res.data.data contains the new record or ID.
             if (res.data.data && res.data.data.id) {
                 pid = res.data.data.id
                 form.id = pid
-            } else {
-                 // Optimization: If API doesn't return ID, we can't proceed with step creation.
-                 // We will assume it does for now as is standard.
-                 // If failure, user will see "Saved basic info but failed steps".
             }
         }
 
@@ -306,7 +324,6 @@ const handleGlobalSave = async () => {
         deletedStepIds.value = [] // Reset
 
         // 3. Process Steps (Create/Update)
-        // We do this concurrently or sequentially.
         const promises = stepsList.value.map((step, idx) => {
              const payload = {
                  ...step,
@@ -324,9 +341,7 @@ const handleGlobalSave = async () => {
         
         ElMessage.success('全部配置已保存')
         if (!isEditMode.value) {
-             // Redirect to edit mode or list
              router.replace(`/cicd/pipelines/${pid}/edit`)
-             // Reload to get real IDs for new steps
              setTimeout(fetchData, 500)
         } else {
             fetchData()
@@ -340,235 +355,123 @@ const handleGlobalSave = async () => {
     }
 }
 
-onMounted(fetchData)
+
+onMounted(() => {
+    fetchData()
+    fetchK8sInstances()
+})
 </script>
 
 <style scoped>
-.pipeline-editor-page {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
-.editor-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: #fff;
-    padding: 16px 24px;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.02);
-}
-
-.header-left { display: flex; align-items: center; gap: 16px; }
-.header-title { display: flex; flex-direction: column; }
-.page-title { margin: 0; font-size: 18px; font-weight: 600; color: #303133; }
-.page-subtitle { font-size: 12px; color: #909399; }
-.back-btn { font-size: 14px; color: #606266; }
-
-/* Workspace */
-.editor-workspace {
-    flex: 1;
-    display: flex;
-    gap: 20px;
-    overflow: hidden; /* To contain inner scroll */
-}
-
-/* Sidebar */
-.sidebar-panel {
-    width: 320px;
-    background: #fff;
-    border-radius: 12px;
-    display: flex;
-    flex-direction: column;
-    border: 1px solid #EBEEF5;
-    overflow: hidden;
-}
-
-.sidebar-header {
-    padding: 16px;
-    border-bottom: 1px solid #EBEEF5;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: #FAFAFA;
-}
-.sh-title { font-weight: 600; color: #303133; }
+.back-btn { font-size: 14px; color: var(--text-sub); }
+.ml-4 { margin-left: 16px; }
 
 .structure-list {
-    flex: 1;
-    overflow-y: auto;
-    padding: 12px;
     display: flex;
     flex-direction: column;
     gap: 8px;
+    padding: 12px 0;
 }
 
 .divider {
     font-size: 12px;
-    color: #909399;
-    margin: 12px 0 4px 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    color: var(--text-sub);
+    margin: 16px 0 8px 0;
     font-weight: 600;
+    padding-left: 12px;
 }
 
 .structure-item {
     display: flex;
     align-items: center;
-    padding: 10px 12px;
-    border-radius: 8px;
+    padding: 12px;
+    border-radius: var(--radius-md);
     cursor: pointer;
     transition: all 0.2s;
     border: 1px solid transparent;
     gap: 12px;
 }
-.structure-item:hover { background: #F5F7FA; }
-.structure-item.active { background: #ECF5FF; border-color: #D9ECFF; }
 
-.msg-icon {
+.structure-item:hover { background: #f5f7fa; }
+.structure-item.active { background: #ecf5ff; border-color: #d9ecff; }
+
+.item-icon {
     width: 32px; height: 32px;
     border-radius: 8px;
     display: flex; align-items: center; justify-content: center;
     font-size: 16px;
-    background: #F0F2F5; color: #606266;
+    background: #f0f2f5; color: var(--text-sub);
 }
-.basic-icon { background: rgba(50, 108, 229, 0.1); color: #326CE5; }
-.active .msg-icon { background: #326CE5; color: #fff; }
+.active .item-icon { background: var(--primary-color); color: #fff; }
 
-.steps-scroll-area {
-    display: flex;
-    flex-direction: column;
-    align-items: center; /* Center items for flowchart look */
-    gap: 32px; /* Space for arrows */
-    padding: 16px 0;
-}
+.item-info { flex: 1; overflow: hidden; }
+.item-title { font-size: 14px; font-weight: 500; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item-desc { font-size: 12px; color: var(--text-sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.step-item { 
-    position: relative; 
-    z-index: 1; 
-    width: 260px; /* Fixed width cards */
-    justify-content: flex-start;
-    border: 1px solid #DCDFE6;
+/* Steps */
+.step-item {
     background: #fff;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    border: 1px solid var(--border-color);
+    margin-bottom: 8px;
+    position: relative;
+    padding-left: 40px;
 }
-
-/* Flowchart Arrow */
-.step-item:not(:last-child)::after {
-    content: '';
-    position: absolute;
-    left: 50%; /* Center */
-    top: 100%; /* Bottom of card */
-    height: 32px; /* Gap size */
-    width: 2px;
-    background: #DCDFE6;
-    z-index: -1;
-    transform: translateX(-50%);
-}
-
-/* Arrowhead */
-.step-item:not(:last-child)::before {
-    content: '';
-    position: absolute;
-    left: 50%;
-    top: calc(100% + 24px); /* Position at end of line */
-    transform: translateX(-50%);
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    border-top: 6px solid #DCDFE6;
-    z-index: 0;
-}
-
-.drag-handle { cursor: grab; color: #C0C4CC; font-size: 14px; opacity: 0; transition: opacity 0.2s; position: absolute; right: 8px; top: 8px; }
-.step-item:hover .drag-handle { opacity: 1; }
 
 .step-idx {
     width: 24px; height: 24px;
     border-radius: 50%;
-    background: #F0F2F5;
-    color: #909399;
+    background: #f0f2f5;
+    color: var(--text-sub);
     font-size: 12px;
     display: flex; align-items: center; justify-content: center;
     font-weight: bold;
     flex-shrink: 0;
+    position: absolute;
+    left: 8px;
 }
-.active .step-idx { background: #326CE5; color: #fff; }
+.active .step-idx { background: var(--primary-color); color: #fff; }
 
-.item-info { flex: 1; min-width: 0; text-align: left; }
-.item-title { font-size: 14px; font-weight: 500; color: #303133; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.item-desc { font-size: 12px; color: #909399; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.drag-handle { 
+    position: absolute; right: 8px; top: 4px; 
+    color: var(--text-sub); cursor: grab; opacity: 0; 
+}
+.step-item:hover .drag-handle { opacity: 1; }
 
-.delete-btn { opacity: 0; transition: opacity 0.2s; position: absolute; right: 8px; bottom: 8px;}
+.delete-btn {
+    position: absolute; right: 8px; bottom: 4px;
+    opacity: 0; transition: opacity 0.2s;
+}
 .step-item:hover .delete-btn { opacity: 1; }
 
-.no-steps-hint { font-size: 12px; color: #C0C4CC; text-align: center; margin-top: 20px; }
-
-/* Dark Mode Overrides for Flowchart */
-.dark .step-item { background: #2b2b2c; border-color: #4C4D4F; }
-.dark .step-item:hover { border-color: #326CE5; }
-.dark .step-item:not(:last-child)::after { background: #4C4D4F; }
-.dark .step-item:not(:last-child)::before { border-top-color: #4C4D4F; }
-.dark .step-idx { background: #363637; color: #C0C4CC; }
-.dark .active .step-idx { background: #326CE5; color: #fff; }
-
-/* Right Panel */
-.detail-panel {
-    flex: 1;
-    background: #fff;
-    border-radius: 12px;
-    padding: 24px;
-    border: 1px solid #EBEEF5;
-    overflow-y: auto;
-    position: relative;
-}
-
-.panel-header {
-    font-size: 18px; 
-    font-weight: 600; 
-    color: #303133; 
-    margin-bottom: 24px; 
-    padding-bottom: 16px;
-    border-bottom: 1px solid #EBEEF5;
-    display: flex; align-items: center; justify-content: space-between;
+.panel-header-custom {
+    display: flex;
+    align-items: center;
     gap: 12px;
+    margin-bottom: 24px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-main);
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-color);
 }
-.ph-left { display: flex; align-items: center; gap: 10px; }
-.highlight-text { color: #326CE5; }
-.step-badge { font-size: 12px; background: #F0F2F5; padding: 4px 8px; border-radius: 4px; color: #909399; font-weight: normal; }
-
-.form-container { max-width: 800px; margin: 0 auto; }
-.form-row { display: flex; gap: 20px; }
-.flex-1 { flex: 1; }
-
-.code-editor-input :deep(.el-textarea__inner) {
-    font-family: 'JetBrains Mono', 'Fira Code', monospace;
-    font-size: 13px;
-    line-height: 1.5;
-    background: #FAFAFA;
-    border-color: #DCDFE6;
-}
+.ph-left { display: flex; align-items: center; gap: 8px; }
+.highlight-text { color: var(--primary-color); }
 
 .empty-selection {
-    height: 100%;
+    height: 300px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    color: #DCDFE6;
+    color: var(--text-sub);
 }
-.huge-icon { font-size: 64px; margin-bottom: 16px; }
+.huge-icon { font-size: 48px; margin-bottom: 16px; }
 
-/* Dark Mode */
-.dark .editor-header, .dark .sidebar-panel, .dark .detail-panel { 
-    background: #1e1e2d; border-color: #303030; 
+.code-editor-input :deep(.el-textarea__inner) {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    background: #fafafa;
 }
-.dark .sidebar-header { background: #262635; border-bottom-color: #303030; }
-.dark .page-title, .dark .sh-title, .dark .item-title, .dark .panel-header { color: #fff; }
-.dark .msg-icon, .dark .step-idx { background: #363637; color: #C0C4CC; }
-.dark .structure-item:hover { background: #2b2b2c; }
-.dark .structure-item.active { background: rgba(50, 108, 229, 0.1); border-color: rgba(50, 108, 229, 0.3); }
-.dark .step-badge { background: #363637; color: #ccc; }
-.dark .code-editor-input :deep(.el-textarea__inner) { background: #2b2b2c; border-color: #4C4D4F; color: #fff; }
+
+.no-steps-hint { text-align: center; color: var(--text-sub); font-size: 12px; margin-top: 20px; }
 </style>

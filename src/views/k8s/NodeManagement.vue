@@ -29,7 +29,7 @@
         <el-card class="stat-card">
           <div class="stat-content">
             <div class="stat-icon total">
-              <el-icon size="32"><Monitor /></el-icon>
+              <el-icon size="36"><Monitor /></el-icon>
             </div>
             <div class="stat-info">
               <div class="stat-value">{{ nodeStats.total }}</div>
@@ -42,7 +42,7 @@
         <el-card class="stat-card">
           <div class="stat-content">
             <div class="stat-icon ready">
-              <el-icon size="32"><CircleCheck /></el-icon>
+              <el-icon size="36"><CircleCheck /></el-icon>
             </div>
             <div class="stat-info">
               <div class="stat-value">{{ nodeStats.ready }}</div>
@@ -55,7 +55,7 @@
         <el-card class="stat-card">
           <div class="stat-content">
             <div class="stat-icon not-ready">
-              <el-icon size="32"><Warning /></el-icon>
+              <el-icon size="36"><Warning /></el-icon>
             </div>
             <div class="stat-info">
               <div class="stat-value">{{ nodeStats.notReady }}</div>
@@ -68,7 +68,7 @@
         <el-card class="stat-card">
           <div class="stat-content">
             <div class="stat-icon masters">
-              <el-icon size="32"><Star /></el-icon>
+              <el-icon size="36"><Star /></el-icon>
             </div>
             <div class="stat-info">
               <div class="stat-value">{{ nodeStats.masters }}</div>
@@ -107,10 +107,10 @@
         </div>
       </template>
       
-      <div class="table-container">
+      <div class="autoops-table-wrapper">
         <el-table 
           :data="filteredNodeList" 
-          style="width: 100%" 
+          style="width: 100%" class="autoops-table" 
           v-loading="loading"
           empty-text="暂无节点数据"
           row-key="name"
@@ -991,7 +991,7 @@ onUnmounted(() => {
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.05);
   border: none;
-  height: 100px;
+  height: 120px;
 }
 
 .stat-content {
@@ -1002,13 +1002,15 @@ onUnmounted(() => {
 }
 
 .stat-icon {
-  width: 64px;
-  height: 64px;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
+  flex-shrink: 0;
+  padding: 4px;
 }
 
 .stat-icon.total {

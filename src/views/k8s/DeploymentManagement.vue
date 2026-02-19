@@ -1,1245 +1,825 @@
 <template>
-  <div class="deployment-management">
-    <el-card class="page-header-card">
-      <div class="page-header">
-        <div>
-          <h2>Deployment 管理</h2>
-          <p>查看和管理 Kubernetes Deployment</p>
-        </div>
-        <div class="header-actions">
-          <div class="namespace-selector">
-            <span class="selector-label">命名空间：</span>
-            <el-select v-model="selectedNamespace" placeholder="选择命名空间" @change="handleNamespaceChange" style="width: 200px;">
-              <el-option
-                key="all"
-                label="所有"
-                value="all"
-              />
-              <el-option
-                v-for="ns in namespaceList"
-                :key="ns.name"
-                :label="ns.name"
-                :value="ns.name"
-              />
-            </el-select>
-          </div>
-          <el-button type="primary" @click="showCreateDialog = true">
-            <el-icon><Plus /></el-icon>
-            创建 Deployment
-          </el-button>
-        </div>
-      </div>
-    </el-card>
+  <div class="autoops-container">
+    <!-- Filter Bar -->
+    <div class="autoops-filter-bar">
+      <label class="autoops-filter-label">工作负载名称</label>
+      <el-input 
+        v-model="searchKeyword" 
+        placeholder="请输入名称" 
+        class="autoops-input"
+        style="width: 240px"
+        clearable
+        @keyup.enter="handleSearch"
+      />
+      <el-button type="primary" class="autoops-btn-primary" @click="handleSearch">
+        <el-icon><Search /></el-icon>
+        <span>搜索</span>
+      </el-button>
+      <el-button class="autoops-btn-secondary" @click="handleReset">
+        <el-icon><RefreshRight /></el-icon>
+        <span>重置</span>
+      </el-button>
+      <el-button type="success" class="autoops-btn-success">
+        <el-icon><Monitor /></el-icon>
+        <span>监控仪表板</span>
+      </el-button>
+      <el-button type="primary" class="autoops-btn-primary" @click="showCreateDialog = true">
+        <el-icon><Plus /></el-icon>
+        <span>创建工作负载</span>
+      </el-button>
+    </div>
 
-    <el-card class="content-card">
-      <div class="table-container">
-        <el-table 
-          :data="deploymentList" 
-          style="width: 100%" 
-          v-loading="loading"
-          height="calc(100vh - 280px)"
-          :empty-text="loading ? '加载中...' : '暂无数据'"
-        >
-          <el-table-column prop="name" label="名称" min-width="150" show-overflow-tooltip />
-          <el-table-column prop="namespace" label="命名空间" width="150" />
-          <el-table-column label="副本数" width="120">
-            <template #default="scope">
-              <el-tag :type="scope.row.ready === scope.row.replicas ? 'success' : 'warning'">
-                {{ scope.row.ready || 0 }}/{{ scope.row.replicas || 0 }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="available" label="可用副本" width="120">
-            <template #default="scope">
-              <el-tag :type="scope.row.available === scope.row.replicas ? 'success' : 'danger'">
-                {{ scope.row.available || 0 }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column label="创建时间" width="180">
-            <template #default="scope">
-              {{ formatDate(scope.row.created) }}
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="320" fixed="right">
-            <template #default="scope">
-              <el-button-group>
-                <el-button size="small" @click="handleViewDetail(scope.row)">
-                  <el-icon><View /></el-icon>
-                  详情
-                </el-button>
-                <el-button size="small" @click="handleScale(scope.row)">
-                  <el-icon><Sort /></el-icon>
-                  扩缩容
-                </el-button>
-                <el-button size="small" @click="handleUpdate(scope.row)">
-                  <el-icon><Edit /></el-icon>
-                  更新
-                </el-button>
-                <el-button size="small" type="danger" @click="handleDelete(scope.row)">
-                  <el-icon><Delete /></el-icon>
-                  删除
-                </el-button>
-              </el-button-group>
-            </template>
-          </el-table-column>
-        </el-table>
-      </div>
-    </el-card>
-
-    <el-dialog v-model="showCreateDialog" title="创建 Deployment" width="900px" :close-on-click-modal="false">
-      <el-tabs v-model="activeTab" type="border-card">
-        <el-tab-pane label="表单创建" name="form">
-          <el-form :model="createForm" :rules="createRules" ref="createFormRef" label-width="120px">
-            <el-row :gutter="20">
-              <el-col :span="12">
-                <el-form-item label="命名空间" prop="namespace">
-                  <el-select v-model="createForm.namespace" placeholder="选择命名空间" style="width: 100%;">
-                    <el-option
-                      v-for="ns in namespaceList"
-                      :key="ns.name"
-                      :label="ns.name"
-                      :value="ns.name"
-                    />
-                  </el-select>
-                </el-form-item>
-              </el-col>
-              <el-col :span="12">
-                <el-form-item label="Deployment 名称" prop="name">
-                  <el-input v-model="createForm.name" placeholder="请输入 Deployment 名称" />
-                </el-form-item>
-              </el-col>
-            </el-row>
-            
-            <el-row :gutter="20">
-              <el-col :span="12">
-                <el-form-item label="副本数" prop="replicas">
-                  <el-input-number v-model="createForm.replicas" :min="0" :max="100" style="width: 100%;" />
-                </el-form-item>
-              </el-col>
-              <el-col :span="12">
-                <el-form-item label="选择器标签">
-                  <el-input v-model="createForm.selectorLabel" placeholder="app:nginx" />
-                </el-form-item>
-              </el-col>
-            </el-row>
-            
-            <el-divider content-position="left">Pod 模板配置</el-divider>
-            
-            <el-form-item label="Pod 标签">
-              <div v-for="(label, index) in createForm.podLabels" :key="index" class="label-config">
-                <el-row :gutter="10">
-                  <el-col :span="10">
-                    <el-input v-model="label.key" placeholder="标签键" />
-                  </el-col>
-                  <el-col :span="10">
-                    <el-input v-model="label.value" placeholder="标签值" />
-                  </el-col>
-                  <el-col :span="4">
-                    <el-button type="danger" size="small" @click="removePodLabel(index)">删除</el-button>
-                  </el-col>
-                </el-row>
+    <!-- Table -->
+    <div class="autoops-table-wrapper">
+      <el-table 
+        :data="deploymentList" 
+        class="autoops-table" style="width: 100%" 
+        v-loading="loading"
+      >
+        <!-- Name Column -->
+        <el-table-column label="名称" min-width="220">
+          <template #default="{ row }">
+            <div class="name-cell">
+              <el-icon class="resource-icon deployment-icon"><aim /></el-icon>
+              <div class="name-content">
+                <a class="name-link" @click="handleViewDetail(row)">{{ row.name }}</a>
+                <span class="resource-type">Deployment</span>
               </div>
-              <el-button type="primary" size="small" @click="addPodLabel">添加标签</el-button>
-            </el-form-item>
-            
-            <el-divider content-position="left">容器配置</el-divider>
-            
-            <div v-for="(container, index) in createForm.containers" :key="index" class="container-config">
-              <el-card class="container-card">
-                <template #header>
-                  <div class="container-header">
-                    <span>容器 {{ index + 1 }}</span>
-                    <el-button 
-                      v-if="createForm.containers.length > 1"
-                      type="danger" 
-                      size="small" 
-                      text
-                      @click="removeContainer(index)"
-                    >
-                      <el-icon><Delete /></el-icon>
-                      删除
-                    </el-button>
+            </div>
+          </template>
+        </el-table-column>
+
+        <!-- Labels Column -->
+        <el-table-column label="标签" min-width="80">
+          <template #default="{ row }">
+             <div class="label-cell">
+                <el-icon class="label-icon"><PriceTag /></el-icon>
+                <el-popover placement="top" width="auto" trigger="hover">
+                  <template #reference>
+                    <el-tag type="danger" effect="plain" round size="small" class="label-count">
+                       {{ Object.keys(row.labels || {}).length }}
+                    </el-tag>
+                  </template>
+                  <div class="tags-popover">
+                     <span v-for="(val, key) in row.labels" :key="key" class="tag-item">
+                        {{ key }}: {{ val }}
+                     </span>
                   </div>
-                </template>
-                
-                <el-row :gutter="20">
-                  <el-col :span="12">
-                    <el-form-item :label="`容器名称`" :prop="`containers.${index}.name`" :rules="{ required: true, message: '请输入容器名称', trigger: 'blur' }">
-                      <el-input v-model="container.name" placeholder="请输入容器名称" />
-                    </el-form-item>
-                  </el-col>
-                  <el-col :span="12">
-                    <el-form-item :label="`镜像`" :prop="`containers.${index}.image`" :rules="{ required: true, message: '请输入镜像', trigger: 'blur' }">
-                      <el-input v-model="container.image" placeholder="例如: nginx:latest" />
-                    </el-form-item>
-                  </el-col>
-                </el-row>
-                
-                <el-row :gutter="20">
-                  <el-col :span="12">
-                    <el-form-item label="镜像拉取策略">
-                      <el-select v-model="container.imagePullPolicy" placeholder="选择策略">
-                        <el-option label="Always" value="Always" />
-                        <el-option label="IfNotPresent" value="IfNotPresent" />
-                        <el-option label="Never" value="Never" />
-                      </el-select>
-                    </el-form-item>
-                  </el-col>
-                  <el-col :span="12">
-                    <el-form-item label="重启策略">
-                      <el-select v-model="createForm.restartPolicy" placeholder="选择策略">
-                        <el-option label="Always" value="Always" />
-                        <el-option label="OnFailure" value="OnFailure" />
-                        <el-option label="Never" value="Never" />
-                      </el-select>
-                    </el-form-item>
-                  </el-col>
-                </el-row>
-                
-                <el-form-item label="端口配置">
-                  <div v-for="(port, portIndex) in container.ports" :key="portIndex" class="port-config">
-                    <el-row :gutter="10">
-                      <el-col :span="6">
-                        <el-input v-model="port.name" placeholder="端口名称" />
-                      </el-col>
-                      <el-col :span="6">
-                        <el-input-number v-model="port.containerPort" :min="1" :max="65535" placeholder="容器端口" style="width: 100%" />
-                      </el-col>
-                      <el-col :span="6">
-                        <el-select v-model="port.protocol" placeholder="协议">
-                          <el-option label="TCP" value="TCP" />
-                          <el-option label="UDP" value="UDP" />
+                </el-popover>
+             </div>
+          </template>
+        </el-table-column>
+
+        <!-- Pods Column -->
+        <el-table-column label="容器组数量" min-width="110" align="center">
+           <template #default="{ row }">
+              <div class="pods-cell">
+                 <div class="pods-count">
+                    <el-icon class="monitor-icon"><Platform /></el-icon>
+                    <span :class="{'text-green': row.ready === row.replicas, 'text-warning': row.ready < row.replicas}">
+                        {{ row.ready || 0 }}/{{ row.replicas || 0 }}
+                    </span>
+                 </div>
+                 <div class="pods-status" :class="{'status-ready': row.ready === row.replicas, 'status-warn': row.ready < row.replicas}">
+                    {{ row.ready === row.replicas ? '全部就绪' : '部分就绪' }}
+                 </div>
+              </div>
+           </template>
+        </el-table-column>
+
+        <!-- Request/Limits -->
+        <el-table-column label="Request/Limits" min-width="160">
+           <template #default="{ row }">
+              <div class="resource-cell">
+                 <div class="res-row">
+                    <span class="res-label">CPU:</span>
+                    <span class="res-val request">{{ formatResourceValue(row.resources?.cpuRequest) }}</span> / 
+                    <span class="res-val limit">{{ formatResourceValue(row.resources?.cpuLimit) }}</span>
+                 </div>
+                 <div class="res-row">
+                    <span class="res-label">Mem:</span>
+                    <span class="res-val request">{{ formatResourceValue(row.resources?.memoryRequest) }}</span> / 
+                    <span class="res-val limit">{{ formatResourceValue(row.resources?.memoryLimit) }}</span>
+                 </div>
+              </div>
+           </template>
+        </el-table-column>
+
+        <!-- Image -->
+        <el-table-column label="镜像" min-width="180">
+           <template #default="{ row }">
+              <div class="image-cell">
+                 <el-icon class="image-icon"><Box /></el-icon>
+                 <span class="image-name" :title="row.image">{{ row.image }}</span>
+                 <span v-if="row.containers && row.containers.length > 1" class="more-images">
+                    +{{ row.containers.length - 1 }}个镜像
+                 </span>
+              </div>
+           </template>
+        </el-table-column>
+
+        <!-- Created Time -->
+        <el-table-column label="创建时间" width="175">
+            <template #default="{ row }">
+               <span class="time-text">{{ formatDate(row.created) }}</span>
+            </template>
+        </el-table-column>
+
+        <!-- Operations -->
+        <el-table-column label="操作" width="180" fixed="right">
+            <template #default="{ row }">
+               <div class="autoops-actions">
+                  <el-button link type="primary" size="small" @click="handleScale(row)">扩缩容</el-button>
+                  <el-button link type="primary" size="small" @click="handleViewDetail(row)">详情</el-button>
+                  <el-button link type="primary" size="small" @click="handleUpdate(row)">更新</el-button>
+                  <el-dropdown trigger="click" @command="(cmd) => handleCommand(cmd, row)">
+                    <span class="el-dropdown-link">
+                      更多<el-icon class="el-icon--right"><arrow-down /></el-icon>
+                    </span>
+                    <template #dropdown>
+                      <el-dropdown-menu>
+                        <el-dropdown-item command="shell">Shell</el-dropdown-item>
+                        <el-dropdown-item command="logs">日志</el-dropdown-item>
+                        <el-dropdown-item command="delete" divided style="color: #F56C6C;">删除</el-dropdown-item>
+                      </el-dropdown-menu>
+                    </template>
+                  </el-dropdown>
+               </div>
+            </template>
+        </el-table-column>
+      </el-table>
+       <!-- Pagination -->
+       <div class="pagination-container">
+          <el-pagination
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            :total="total"
+            :page-sizes="[10, 20, 50, 100]"
+            layout="total, sizes, prev, pager, next, jumper"
+            @current-change="fetchData"
+            @size-change="handleSizeChange"
+          />
+       </div>
+    </div>
+
+    <!-- Keep Existing Dialogs -->
+    <el-dialog v-model="showCreateDialog" title="创建 Deployment" width="900px" :close-on-click-modal="false" append-to-body>
+      <!-- ... (Keep existing Create Content but simplify or reuse logic) ... -->
+      <div style="padding: 20px;">
+          <el-tabs v-model="activeTab" type="border-card">
+              <el-tab-pane label="表单创建" name="form">
+                  <el-form :model="createForm" :rules="createRules" ref="createFormRef" label-width="120px">
+                     <el-form-item label="名称" prop="name"><el-input v-model="createForm.name" /></el-form-item>
+                     <el-form-item label="命名空间" prop="namespace">
+                        <el-select v-model="createForm.namespace" placeholder="请选择命名空间" filterable style="width: 100%">
+                           <el-option v-for="ns in namespaceList" :key="ns.name" :label="ns.name" :value="ns.name" />
                         </el-select>
-                      </el-col>
-                      <el-col :span="6">
-                        <el-button type="danger" size="small" @click="removePort(container, portIndex)">删除</el-button>
-                      </el-col>
-                    </el-row>
-                  </div>
-                  <el-button type="primary" size="small" @click="addPort(container)">添加端口</el-button>
-                </el-form-item>
-                
-                <el-form-item label="环境变量">
-                  <div v-for="(env, envIndex) in container.env" :key="envIndex" class="env-config">
-                    <el-row :gutter="10">
-                      <el-col :span="8">
-                        <el-input v-model="env.name" placeholder="变量名" />
-                      </el-col>
-                      <el-col :span="12">
-                        <el-input v-model="env.value" placeholder="变量值" />
-                      </el-col>
-                      <el-col :span="4">
-                        <el-button type="danger" size="small" @click="removeEnv(container, envIndex)">删除</el-button>
-                      </el-col>
-                    </el-row>
-                  </div>
-                  <el-button type="primary" size="small" @click="addEnv(container)">添加环境变量</el-button>
-                </el-form-item>
-                
-                <el-form-item label="资源限制">
-                  <el-row :gutter="20">
-                    <el-col :span="12">
-                      <el-form-item label="CPU请求">
-                        <el-input v-model="container.resources.requests.cpu" placeholder="例如: 100m" />
-                      </el-form-item>
-                    </el-col>
-                    <el-col :span="12">
-                      <el-form-item label="内存请求">
-                        <el-input v-model="container.resources.requests.memory" placeholder="例如: 128Mi" />
-                      </el-form-item>
-                    </el-col>
-                  </el-row>
-                  <el-row :gutter="20">
-                    <el-col :span="12">
-                      <el-form-item label="CPU限制">
-                        <el-input v-model="container.resources.limits.cpu" placeholder="例如: 500m" />
-                      </el-form-item>
-                    </el-col>
-                    <el-col :span="12">
-                      <el-form-item label="内存限制">
-                        <el-input v-model="container.resources.limits.memory" placeholder="例如: 512Mi" />
-                      </el-form-item>
-                    </el-col>
-                  </el-row>
-                </el-form-item>
-              </el-card>
-            </div>
-            
-            <el-button type="primary" @click="addContainer">添加容器</el-button>
-            
-            <el-divider content-position="left">高级配置</el-divider>
-            
-            <el-form-item label="Deployment 标签">
-              <div v-for="(label, index) in createForm.labels" :key="index" class="label-config">
-                <el-row :gutter="10">
-                  <el-col :span="10">
-                    <el-input v-model="label.key" placeholder="标签键" />
-                  </el-col>
-                  <el-col :span="10">
-                    <el-input v-model="label.value" placeholder="标签值" />
-                  </el-col>
-                  <el-col :span="4">
-                    <el-button type="danger" size="small" @click="removeLabel(index)">删除</el-button>
-                  </el-col>
-                </el-row>
-              </div>
-              <el-button type="primary" size="small" @click="addLabel">添加标签</el-button>
-            </el-form-item>
-            
-            <el-form-item label="注解">
-              <div v-for="(annotation, index) in createForm.annotations" :key="index" class="annotation-config">
-                <el-row :gutter="10">
-                  <el-col :span="10">
-                    <el-input v-model="annotation.key" placeholder="注解键" />
-                  </el-col>
-                  <el-col :span="10">
-                    <el-input v-model="annotation.value" placeholder="注解值" />
-                  </el-col>
-                  <el-col :span="4">
-                    <el-button type="danger" size="small" @click="removeAnnotation(index)">删除</el-button>
-                  </el-col>
-                </el-row>
-              </div>
-              <el-button type="primary" size="small" @click="addAnnotation">添加注解</el-button>
-            </el-form-item>
-            
-            <el-form-item label="节点选择器">
-              <div v-for="(selector, index) in createForm.nodeSelector" :key="index" class="selector-config">
-                <el-row :gutter="10">
-                  <el-col :span="10">
-                    <el-input v-model="selector.key" placeholder="选择器键" />
-                  </el-col>
-                  <el-col :span="10">
-                    <el-input v-model="selector.value" placeholder="选择器值" />
-                  </el-col>
-                  <el-col :span="4">
-                    <el-button type="danger" size="small" @click="removeNodeSelector(index)">删除</el-button>
-                  </el-col>
-                </el-row>
-              </div>
-              <el-button type="primary" size="small" @click="addNodeSelector">添加节点选择器</el-button>
-            </el-form-item>
-            
-            <el-divider content-position="left">更新策略</el-divider>
-            
-            <el-row :gutter="20">
-              <el-col :span="12">
-                <el-form-item label="更新策略类型">
-                  <el-select v-model="createForm.strategy.type" placeholder="选择策略">
-                    <el-option label="RollingUpdate" value="RollingUpdate" />
-                    <el-option label="Recreate" value="Recreate" />
-                  </el-select>
-                </el-form-item>
-              </el-col>
-              <el-col :span="12">
-                <el-form-item label="最大不可用">
-                  <el-input v-model="createForm.strategy.rollingUpdate.maxUnavailable" placeholder="例如: 25%" />
-                </el-form-item>
-              </el-col>
-            </el-row>
-            
-            <el-form-item label="最大超出">
-              <el-input v-model="createForm.strategy.rollingUpdate.maxSurge" placeholder="例如: 25%" />
-            </el-form-item>
-          </el-form>
-        </el-tab-pane>
-        
-        <el-tab-pane label="YAML编辑" name="yaml">
-          <div class="yaml-editor">
-            <el-alert
-              title="提示"
-              type="info"
-              description="您可以直接编辑YAML配置，或者先在表单中填写配置，然后切换到YAML查看生成的配置"
-              show-icon
-              :closable="false"
-            />
-            <div class="editor-toolbar">
-              <el-button size="small" @click="formatYAML">格式化</el-button>
-              <el-button size="small" @click="validateYAML">验证</el-button>
-              <el-button size="small" @click="downloadYAML">下载</el-button>
-            </div>
-            <el-input
-              v-model="yamlContent"
-              type="textarea"
-              :rows="20"
-              placeholder="请输入Deployment的YAML配置..."
-              class="yaml-textarea"
-            />
-          </div>
-        </el-tab-pane>
-      </el-tabs>
-      
+                     </el-form-item>
+                     <el-form-item label="镜像" prop="image"><el-input v-model="createForm.image" /></el-form-item>
+                     <el-form-item label="副本数" prop="replicas"><el-input-number v-model="createForm.replicas" /></el-form-item>
+                  </el-form>
+              </el-tab-pane>
+              <el-tab-pane label="YAML" name="yaml">
+                 <div class="mb-2">
+                    <el-button type="success" size="small" icon="CircleCheck" @click="handleValidateYAML">YAML 语法校验</el-button>
+                 </div>
+                 <el-input type="textarea" v-model="yamlContent" :rows="15" placeholder="在此粘贴 YAML 配置..." style="font-family: monospace;" />
+              </el-tab-pane>
+          </el-tabs>
+      </div>
       <template #footer>
-        <div class="dialog-footer">
           <el-button @click="showCreateDialog = false">取消</el-button>
-          <el-button type="primary" @click="handleCreate" :loading="submitting">创建</el-button>
-        </div>
+          <el-button type="primary" @click="handleCreate">创建</el-button>
       </template>
     </el-dialog>
 
-    <el-dialog v-model="showScaleDialog" title="扩缩容" width="400px">
-      <el-form :model="scaleForm" label-width="100px">
-        <el-form-item label="当前副本数">
-          <el-input :value="currentDeployment?.replicas" disabled />
-        </el-form-item>
-        <el-form-item label="目标副本数">
-          <el-input-number v-model="scaleForm.replicas" :min="0" :max="100" style="width: 100%;" />
-        </el-form-item>
-      </el-form>
+    <!-- Scale Dialog -->
+    <el-dialog v-model="showScaleDialog" title="扩缩容" width="400px" append-to-body>
+      <div class="p-4">
+         <p class="mb-2">目标副本数</p>
+         <el-input-number v-model="scaleForm.replicas" :min="0" :max="50" class="w-full" />
+      </div>
       <template #footer>
         <el-button @click="showScaleDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleScaleConfirm" :loading="submitting">确定</el-button>
+        <el-button type="primary" @click="handleScaleConfirm">确定</el-button>
       </template>
     </el-dialog>
 
-    <el-dialog v-model="showUpdateDialog" title="更新镜像" width="500px">
-      <el-form :model="updateForm" label-width="100px">
-        <el-form-item label="当前镜像">
-          <el-input :value="currentDeployment?.image || '未知'" disabled />
+    <!-- Detail Dialog -->
+    <el-dialog v-model="showDetailDialog" :title="detailTitle" width="800px" append-to-body>
+        <el-input v-model="detailContent" type="textarea" :rows="20" readonly style="font-family: monospace;" />
+    </el-dialog>
+
+    <!-- Update Image Dialog -->
+    <el-dialog v-model="showUpdateDialog" title="更新镜像" width="500px" append-to-body>
+        <el-form :model="updateForm" label-width="100px">
+            <el-form-item label="当前镜像">
+                <el-input v-model="updateForm.currentImage" disabled />
+            </el-form-item>
+            <el-form-item label="新镜像">
+                <el-input v-model="updateForm.newImage" placeholder="例如: nginx:1.19.0" />
+            </el-form-item>
+        </el-form>
+        <template #footer>
+            <el-button @click="showUpdateDialog = false">取消</el-button>
+            <el-button type="primary" @click="confirmUpdate">更新</el-button>
+        </template>
+    </el-dialog>
+
+    <!-- Logs Dialog -->
+    <el-dialog v-model="showLogsDialog" title="日志查看" width="80%" top="5vh" append-to-body destroy-on-close>
+        <div class="mb-4 flex items-center gap-4">
+            <el-select v-model="selectedLogPod" placeholder="选择 Pod" @change="fetchLogs" style="width: 300px;">
+                <el-option v-for="pod in logPodList" :key="pod.name" :label="pod.name" :value="pod.name" />
+            </el-select>
+            <el-button @click="fetchLogs" :loading="logLoading" icon="RefreshRight" circle />
+        </div>
+        <div class="log-container">
+            <pre>{{ logContent }}</pre>
+        </div>
+    </el-dialog>
+
+    <!-- 容器选择对话框 (For Shell) -->
+    <el-dialog v-model="showContainerSelectDialog" title="选择容器连接 Shell" width="500px" append-to-body>
+      <el-form label-width="80px">
+        <el-form-item label="Pod">
+           <el-select v-model="selectedShellPodName" placeholder="请选择 Pod" style="width: 100%;" @change="handleShellPodChange">
+             <el-option v-for="pod in shellPodList" :key="pod.name" :label="pod.name" :value="pod.name" />
+           </el-select>
         </el-form-item>
-        <el-form-item label="新镜像">
-          <el-input v-model="updateForm.image" placeholder="例如: nginx:1.20" />
+        <el-form-item label="容器">
+           <el-select v-model="selectedContainerForTerminal" placeholder="请选择容器" style="width: 100%;">
+             <el-option v-for="c in shellContainerList" :key="c" :label="c" :value="c" />
+           </el-select>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showUpdateDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleUpdateConfirm" :loading="submitting">更新</el-button>
+        <div class="dialog-footer">
+          <el-button @click="showContainerSelectDialog = false">取消</el-button>
+          <el-button type="primary" @click="confirmContainerSelect" :disabled="!selectedShellPodName || !selectedContainerForTerminal">连接</el-button>
+        </div>
       </template>
     </el-dialog>
 
-    <el-dialog v-model="showDetailDialog" title="Deployment 详情" width="800px">
-      <el-descriptions :column="2" border v-if="currentDeployment">
-        <el-descriptions-item label="名称">{{ currentDeployment.name }}</el-descriptions-item>
-        <el-descriptions-item label="命名空间">{{ currentDeployment.namespace }}</el-descriptions-item>
-        <el-descriptions-item label="副本数">{{ currentDeployment.replicas }}</el-descriptions-item>
-        <el-descriptions-item label="就绪副本">{{ currentDeployment.ready }}</el-descriptions-item>
-        <el-descriptions-item label="可用副本">{{ currentDeployment.available }}</el-descriptions-item>
-        <el-descriptions-item label="创建时间">{{ formatDate(currentDeployment.created) }}</el-descriptions-item>
-      </el-descriptions>
-    </el-dialog>
+    <!-- 容器终端 -->
+    <PodTerminal
+      v-model="showTerminalDialog"
+      :namespace="terminalPod.namespace"
+      :pod-name="terminalPod.podName"
+      :container-name="terminalPod.containerName"
+      :instance-id="getSelectedInstanceId()"
+      @close="handleTerminalClose"
+    />
+
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch, nextTick } from 'vue'
+import { ref, onMounted, reactive } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, View, Sort, Edit, Delete } from '@element-plus/icons-vue'
-import { getDeploymentList, getDeploymentDetail, createDeployment, updateDeployment, scaleDeployment, deleteDeployment } from '@/api/k8s/deployment'
+import { 
+  Search, RefreshRight, Monitor, Plus, 
+  Aim, PriceTag, Platform, Box, Cloudy, 
+  InfoFilled, Setting, Document, Delete, ArrowDown,
+  CircleCheck
+} from '@element-plus/icons-vue'
+import { getDeploymentList, scaleDeployment, deleteDeployment, createDeployment, getDeploymentDetail, updateDeployment } from '@/api/k8s/deployment'
 import { getNamespaceList } from '@/api/k8s/namespace'
+import { getPodList, getPodLogs } from '@/api/k8s/pod'
+import dayjs from 'dayjs'
 import { getSelectedInstanceId } from '@/stores/instanceStore'
 import yaml from 'js-yaml'
+import PodTerminal from '@/components/PodTerminal.vue'
 
 const loading = ref(false)
-const submitting = ref(false)
+const searchKeyword = ref('')
+const deploymentList = ref([])
+const currentPage = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
+const selectedNamespace = ref('default') // or 'all'
+const namespaceList = ref([])
+
 const showCreateDialog = ref(false)
 const showScaleDialog = ref(false)
-const showUpdateDialog = ref(false)
-const showDetailDialog = ref(false)
-const deploymentList = ref([])
-const namespaceList = ref([])
-const selectedNamespace = ref('all')
-const currentDeployment = ref(null)
-const createFormRef = ref(null)
 const activeTab = ref('form')
+const createForm = reactive({ name: '', namespace: 'default', image: 'nginx:latest', replicas: 1 })
 const yamlContent = ref('')
+const scaleForm = reactive({ replicas: 1, row: null })
 
-const createForm = ref({
-  namespace: 'default',
-  name: '',
-  replicas: 1,
-  selectorLabel: '',
-  restartPolicy: 'Always',
-  labels: [],
-  annotations: [],
-  nodeSelector: [],
-  podLabels: [],
-  strategy: {
-    type: 'RollingUpdate',
-    rollingUpdate: {
-      maxUnavailable: '25%',
-      maxSurge: '25%'
+// Detail Dialog
+const showDetailDialog = ref(false)
+const detailContent = ref('')
+const detailTitle = ref('')
+
+// Update Image Dialog
+const showUpdateDialog = ref(false)
+const updateForm = reactive({ currentImage: '', newImage: '', row: null, originalData: null })
+
+// Logs Dialog
+const showLogsDialog = ref(false)
+const logContent = ref('')
+const logPodList = ref([])
+const selectedLogPod = ref('')
+const logLoading = ref(false)
+
+// Shell related
+const showTerminalDialog = ref(false)
+const terminalPod = ref({ namespace: '', podName: '', containerName: '' })
+const showContainerSelectDialog = ref(false)
+const shellPodList = ref([])
+const selectedShellPodName = ref('')
+const shellContainerList = ref([])
+const selectedContainerForTerminal = ref('')
+
+const fetchNamespaces = async () => {
+    try {
+        const instanceId = getSelectedInstanceId()
+        const res = await getNamespaceList(instanceId)
+        // Adjust based on actual API response structure
+        const list = res.data?.items || res.data?.namespaceList || res.data || []
+        namespaceList.value = list.map(item => ({ name: typeof item === 'string' ? item : item.name }))
+    } catch (e) {
+        console.error('Fetch namespaces failed', e)
     }
-  },
-  containers: [{
-    name: '',
-    image: '',
-    imagePullPolicy: 'IfNotPresent',
-    ports: [],
-    env: [],
-    resources: {
-      requests: {
-        cpu: '',
-        memory: ''
-      },
-      limits: {
-        cpu: '',
-        memory: ''
-      }
-    }
-  }]
-})
-
-const scaleForm = ref({
-  replicas: 1
-})
-
-const updateForm = ref({
-  image: ''
-})
-
-const createRules = {
-  namespace: [{ required: true, message: '请选择命名空间', trigger: 'change' }],
-  name: [{ required: true, message: '请输入名称', trigger: 'blur' }],
-  replicas: [{ required: true, message: '请输入副本数', trigger: 'blur' }]
 }
 
-// 容器管理方法
-const addContainer = () => {
-  createForm.value.containers.push({
-    name: '',
-    image: '',
-    imagePullPolicy: 'IfNotPresent',
-    ports: [],
-    env: [],
-    resources: {
-      requests: {
-        cpu: '',
-        memory: ''
-      },
-      limits: {
-        cpu: '',
-        memory: ''
-      }
-    }
-  })
-}
-
-const removeContainer = (index) => {
-  createForm.value.containers.splice(index, 1)
-}
-
-// 端口管理方法
-const addPort = (container) => {
-  container.ports.push({
-    name: '',
-    containerPort: 80,
-    protocol: 'TCP'
-  })
-}
-
-const removePort = (container, index) => {
-  container.ports.splice(index, 1)
-}
-
-// 环境变量管理方法
-const addEnv = (container) => {
-  container.env.push({
-    name: '',
-    value: ''
-  })
-}
-
-const removeEnv = (container, index) => {
-  container.env.splice(index, 1)
-}
-
-// 标签管理方法
-const addLabel = () => {
-  createForm.value.labels.push({
-    key: '',
-    value: ''
-  })
-}
-
-const removeLabel = (index) => {
-  createForm.value.labels.splice(index, 1)
-}
-
-// Pod标签管理方法
-const addPodLabel = () => {
-  createForm.value.podLabels.push({
-    key: '',
-    value: ''
-  })
-}
-
-const removePodLabel = (index) => {
-  createForm.value.podLabels.splice(index, 1)
-}
-
-// 注解管理方法
-const addAnnotation = () => {
-  createForm.value.annotations.push({
-    key: '',
-    value: ''
-  })
-}
-
-const removeAnnotation = (index) => {
-  createForm.value.annotations.splice(index, 1)
-}
-
-// 节点选择器管理方法
-const addNodeSelector = () => {
-  createForm.value.nodeSelector.push({
-    key: '',
-    value: ''
-  })
-}
-
-const removeNodeSelector = (index) => {
-  createForm.value.nodeSelector.splice(index, 1)
-}
-
-// YAML相关方法
-const generateYAML = () => {
-  // 过滤有效的容器
-  const validContainers = createForm.value.containers.filter(container => container.name && container.image)
-  
-  if (validContainers.length === 0) {
-    ElMessage.error('请至少配置一个有效的容器')
-    return ''
-  }
-  
-  // 手动构建YAML字符串，确保格式正确
-  let yaml = `apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: ${createForm.value.name}
-  namespace: ${createForm.value.namespace}`
-  
-  // 添加标签
-  const validLabels = createForm.value.labels.filter(label => label.key && label.value)
-  if (validLabels.length > 0) {
-    yaml += '\n  labels:'
-    validLabels.forEach(label => {
-      yaml += `\n    ${label.key}: ${label.value}`
-    })
-  }
-  
-  // 添加注解
-  const validAnnotations = createForm.value.annotations.filter(annotation => annotation.key && annotation.value)
-  if (validAnnotations.length > 0) {
-    yaml += '\n  annotations:'
-    validAnnotations.forEach(annotation => {
-      yaml += `\n    ${annotation.key}: ${annotation.value}`
-    })
-  }
-  
-  yaml += `\nspec:
-  replicas: ${createForm.value.replicas}
-  selector:
-    matchLabels:`
-  
-  // 添加选择器标签
-  if (createForm.value.selectorLabel) {
-    const [key, value] = createForm.value.selectorLabel.split(':')
-    yaml += `\n      ${key || 'app'}: ${value || createForm.value.name}`
-  } else {
-    yaml += `\n      app: ${createForm.value.name}`
-  }
-  
-  yaml += `
-  strategy:
-    type: ${createForm.value.strategy.type}`
-  
-  if (createForm.value.strategy.type === 'RollingUpdate') {
-    yaml += `
-    rollingUpdate:
-      maxUnavailable: ${createForm.value.strategy.rollingUpdate.maxUnavailable}
-      maxSurge: ${createForm.value.strategy.rollingUpdate.maxSurge}`
-  }
-  
-  yaml += `
-  template:
-    metadata:
-      labels:`
-  
-  // 添加Pod标签
-  const validPodLabels = createForm.value.podLabels.filter(label => label.key && label.value)
-  if (validPodLabels.length > 0) {
-    validPodLabels.forEach(label => {
-      yaml += `\n        ${label.key}: ${label.value}`
-    })
-  } else {
-    yaml += `\n        app: ${createForm.value.name}`
-  }
-  
-  yaml += `
-    spec:
-      restartPolicy: ${createForm.value.restartPolicy || 'Always'}
-      containers:`
-  
-  // 添加容器
-  validContainers.forEach(container => {
-    yaml += `\n        - name: ${container.name}
-          image: ${container.image}
-          imagePullPolicy: ${container.imagePullPolicy || 'IfNotPresent'}`
-    
-    // 添加端口
-    const validPorts = container.ports.filter(port => port.containerPort)
-    if (validPorts.length > 0) {
-      yaml += '\n          ports:'
-      validPorts.forEach(port => {
-        yaml += `\n            - containerPort: ${port.containerPort}`
-        if (port.name) {
-          yaml += `\n              name: ${port.name}`
-        }
-        yaml += `\n              protocol: ${port.protocol || 'TCP'}`
-      })
-    }
-    
-    // 添加环境变量
-    const validEnv = container.env.filter(env => env.name)
-    if (validEnv.length > 0) {
-      yaml += '\n          env:'
-      validEnv.forEach(env => {
-        yaml += `\n            - name: ${env.name}
-              value: "${env.value || ''}"`
-      })
-    }
-    
-    // 添加资源限制
-    const hasRequests = container.resources.requests.cpu || container.resources.requests.memory
-    const hasLimits = container.resources.limits.cpu || container.resources.limits.memory
-    if (hasRequests || hasLimits) {
-      yaml += '\n          resources:'
-      if (hasRequests) {
-        yaml += '\n            requests:'
-        if (container.resources.requests.cpu) {
-          yaml += `\n              cpu: ${container.resources.requests.cpu}`
-        }
-        if (container.resources.requests.memory) {
-          yaml += `\n              memory: ${container.resources.requests.memory}`
-        }
-      }
-      if (hasLimits) {
-        yaml += '\n            limits:'
-        if (container.resources.limits.cpu) {
-          yaml += `\n              cpu: ${container.resources.limits.cpu}`
-        }
-        if (container.resources.limits.memory) {
-          yaml += `\n              memory: ${container.resources.limits.memory}`
-        }
-      }
-    }
-  })
-  
-  // 添加节点选择器
-  const validNodeSelectors = createForm.value.nodeSelector.filter(selector => selector.key && selector.value)
-  if (validNodeSelectors.length > 0) {
-    yaml += '\n      nodeSelector:'
-    validNodeSelectors.forEach(selector => {
-      yaml += `\n        ${selector.key}: ${selector.value}`
-    })
-  }
-  
-  return yaml
-}
-
-const formatYAML = () => {
-  try {
-    // 如果当前在YAML标签页，尝试解析并重新生成
-    if (activeTab.value === 'yaml' && yamlContent.value) {
-      try {
-        const parsed = yaml.load(yamlContent.value, {
-          schema: yaml.FAILSAFE_SCHEMA
-        })
-        yamlContent.value = yaml.dump(parsed, {
-          indent: 2,
-          lineWidth: -1,
-          noRefs: true,
-          sortKeys: false
-        })
-        ElMessage.success('YAML格式化成功')
-      } catch (parseError) {
-        // 如果解析失败，至少清理一下多余的空行
-        const lines = yamlContent.value.split('\n')
-        const cleaned = lines.filter(line => line.trim() !== '' || line === '').join('\n')
-        yamlContent.value = cleaned
-        ElMessage.warning('YAML已清理（部分格式可能需要手动调整）')
-      }
-    } else {
-      // 如果在表单页，直接重新生成
-      yamlContent.value = generateYAML()
-      ElMessage.success('YAML重新生成成功')
-    }
-  } catch (error) {
-    ElMessage.error('YAML格式化失败: ' + error.message)
-  }
-}
-
-const validateYAML = () => {
-  try {
-    // 如果是手动生成的YAML，尝试解析基本结构
-    if (yamlContent.value) {
-      const lines = yamlContent.value.split('\n')
-      let hasApiVersion = false
-      let hasKind = false
-      let hasMetadata = false
-      let hasSpec = false
-      
-      for (const line of lines) {
-        const trimmed = line.trim()
-        if (trimmed.startsWith('apiVersion:')) hasApiVersion = true
-        if (trimmed.startsWith('kind:')) hasKind = true
-        if (trimmed.startsWith('metadata:')) hasMetadata = true
-        if (trimmed.startsWith('spec:')) hasSpec = true
-      }
-      
-      if (hasApiVersion && hasKind && hasMetadata && hasSpec) {
-        // 尝试解析，但不严格要求格式完美
-        yaml.load(yamlContent.value, {
-          schema: yaml.FAILSAFE_SCHEMA
-        })
-        ElMessage.success('YAML验证通过')
-      } else {
-        ElMessage.warning('YAML缺少必要字段（apiVersion, kind, metadata, spec）')
-      }
-    } else {
-      ElMessage.warning('YAML内容为空')
-    }
-  } catch (error) {
-    ElMessage.error('YAML验证失败: ' + error.message)
-  }
-}
-
-const downloadYAML = () => {
-  const blob = new Blob([yamlContent.value], { type: 'text/yaml' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `${createForm.value.name || 'deployment'}.yaml`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
-}
-
-// 监听标签页切换
-watch(activeTab, async (newTab) => {
-  if (newTab === 'yaml') {
-    // 先验证表单数据
-    if (!createForm.value.name) {
-      ElMessage.warning('请先填写Deployment名称')
-      activeTab.value = 'form'
-      return
-    }
-    
-    // 验证容器配置
-    const validContainers = createForm.value.containers.filter(container => container.name && container.image)
-    if (validContainers.length === 0) {
-      ElMessage.warning('请至少配置一个有效的容器（名称和镜像不能为空）')
-      activeTab.value = 'form'
-      return
-    }
-    
-    // 从表单生成YAML
-    yamlContent.value = generateYAML()
-  }
-})
-
-const formatDate = (date) => {
-  if (!date) return '-'
-  return new Date(date).toLocaleString('zh-CN')
-}
-
-const fetchNamespaceList = async () => {
-  try {
-    const instanceId = getSelectedInstanceId() || '1'
-    const response = await getNamespaceList(instanceId)
-    namespaceList.value = response.data?.namespaceList || []
-  } catch (error) {
-    ElMessage.error('获取命名空间列表失败')
-  }
-}
-
-const fetchDeploymentList = async () => {
-  loading.value = true
-  try {
-    const instanceId = getSelectedInstanceId() || '1'
-    const response = await getDeploymentList(selectedNamespace.value, instanceId)
-    deploymentList.value = response.data?.deploymentList || []
-  } catch (error) {
-    ElMessage.error('获取 Deployment 列表失败: ' + (error.response?.data?.message || error.message || '未知错误'))
-  } finally {
-    loading.value = false
-  }
-}
-
-const handleNamespaceChange = () => {
-  fetchDeploymentList()
-}
-
-const handleCreate = async () => {
-  submitting.value = true
-  
-  try {
-    const instanceId = getSelectedInstanceId() || '1'
-    let createData
-    
-    if (activeTab.value === 'yaml') {
-      // 直接使用YAML创建
-      try {
-        const deploymentSpec = yaml.load(yamlContent.value)
-        createData = {
-          namespace: deploymentSpec.metadata.namespace,
-          name: deploymentSpec.metadata.name,
-          yaml: yamlContent.value
-        }
-      } catch (error) {
-        ElMessage.error('YAML解析失败: ' + error.message)
+const handleValidateYAML = () => {
+    if (!yamlContent.value) {
+        ElMessage.warning('请输入 YAML 内容')
         return
-      }
-    } else {
-      // 使用表单数据创建
-      if (!createFormRef.value) return
-      
-      // 表单验证
-      const valid = await createFormRef.value.validate().catch(() => false)
-      if (!valid) return
-      
-      // 验证容器配置
-      if (!createForm.value.containers || createForm.value.containers.length === 0) {
-        ElMessage.error('请至少配置一个容器')
-        return
-      }
-      
-      for (let i = 0; i < createForm.value.containers.length; i++) {
-        const container = createForm.value.containers[i]
-        if (!container.name || !container.image) {
-          ElMessage.error(`容器 ${i + 1} 的名称和镜像不能为空`)
-          return
-        }
-      }
-      
-      createData = createForm.value
     }
-    
-    await createDeployment(createData.namespace, createData, instanceId)
-    ElMessage.success('Deployment 创建成功')
-    showCreateDialog.value = false
-    resetCreateForm()
-    await fetchDeploymentList()
-  } catch (error) {
-    ElMessage.error('创建 Deployment 失败: ' + (error.response?.data?.message || error.message || '未知错误'))
-  } finally {
-    submitting.value = false
-  }
+    try {
+        const docs = yaml.loadAll(yamlContent.value)
+        ElMessage.success('YAML 语法校验通过 ✅')
+    } catch (e) {
+        console.error(e)
+        ElMessageBox.alert(
+            `<pre style="color: #F56C6C; max-height: 300px; overflow: auto;">${e.message}</pre>`, 
+            '语法错误', 
+            { dangerouslyUseHTMLString: true, type: 'error' }
+        )
+    }
 }
 
-const resetCreateForm = () => {
-  createForm.value = {
-    namespace: selectedNamespace.value || 'default',
-    name: '',
-    replicas: 1,
-    selectorLabel: '',
-    restartPolicy: 'Always',
-    labels: [],
-    annotations: [],
-    nodeSelector: [],
-    podLabels: [],
-    strategy: {
-      type: 'RollingUpdate',
-      rollingUpdate: {
-        maxUnavailable: '25%',
-        maxSurge: '25%'
-      }
-    },
-    containers: [{
-      name: '',
-      image: '',
-      imagePullPolicy: 'IfNotPresent',
-      ports: [],
-      env: [],
-      resources: {
-        requests: {
-          cpu: '',
-          memory: ''
-        },
-        limits: {
-          cpu: '',
-          memory: ''
+const fetchData = async () => {
+    loading.value = true
+    try {
+        const instanceId = getSelectedInstanceId()
+        const res = await getDeploymentList(selectedNamespace.value, instanceId)
+        deploymentList.value = res.data?.deploymentList || []
+        total.value = res.data?.total || deploymentList.value.length
+    } catch (e) {
+        ElMessage.error('获取 Deployment 列表失败')
+        deploymentList.value = []
+        total.value = 0
+    } finally {
+        loading.value = false
+    }
+}
+
+const handleSearch = () => fetchData()
+const handleReset = () => { searchKeyword.value = ''; fetchData() }
+const handleSizeChange = () => fetchData()
+const formatDate = (ts) => {
+    if (!ts) return '-'
+    // Backend returns ISO string often, or check if unix
+    return dayjs(ts).isValid() ? dayjs(ts).format('YYYY-MM-DD HH:mm:ss') : '-'
+}
+
+const formatResourceValue = (val) => {
+    if (!val || val === '0' || val === '0m' || val === '0Mi') return '-'
+    return val
+}
+
+const handleViewDetail = async (row) => {
+    try {
+        const instanceId = getSelectedInstanceId()
+        const res = await getDeploymentDetail(row.namespace, row.name, instanceId)
+        if (res.data) {
+            // Backend returns { deploymentDetail: { ... } }
+            const detail = res.data.deploymentDetail || res.data
+            detailContent.value = yaml.dump(detail)
+            detailTitle.value = `详情: ${row.name}`
+            showDetailDialog.value = true
         }
-      }
-    }]
-  }
-  yamlContent.value = ''
-  activeTab.value = 'form'
+    } catch(e) { ElMessage.error('获取详情失败') }
 }
 
-const handleViewDetail = async (deployment) => {
-  try {
-    const instanceId = getSelectedInstanceId() || '1'
-    const response = await getDeploymentDetail(deployment.namespace, deployment.name, instanceId)
-    currentDeployment.value = response.data?.deploymentDetail || deployment
-    showDetailDialog.value = true
-  } catch (error) {
-    ElMessage.error('获取 Deployment 详情失败')
-  }
-}
-
-const handleScale = (deployment) => {
-  currentDeployment.value = deployment
-  scaleForm.value.replicas = deployment.replicas
-  showScaleDialog.value = true
+const handleScale = (row) => { 
+    scaleForm.row = row; 
+    scaleForm.replicas = row.replicas; 
+    showScaleDialog.value = true; 
 }
 
 const handleScaleConfirm = async () => {
-  submitting.value = true
-  try {
-    const instanceId = getSelectedInstanceId() || '1'
-    await scaleDeployment(currentDeployment.value.namespace, currentDeployment.value.name, scaleForm.value.replicas, instanceId)
-    ElMessage.success('扩缩容成功')
-    showScaleDialog.value = false
-    await fetchDeploymentList()
-  } catch (error) {
-    ElMessage.error('扩缩容失败: ' + (error.response?.data?.message || error.message || '未知错误'))
-  } finally {
-    submitting.value = false
-  }
-}
-
-const handleUpdate = (deployment) => {
-  currentDeployment.value = deployment
-  updateForm.value.image = ''
-  showUpdateDialog.value = true
-}
-
-const handleUpdateConfirm = async () => {
-  if (!updateForm.value.image) {
-    ElMessage.warning('请输入新镜像')
-    return
-  }
-  
-  submitting.value = true
-  try {
-    const instanceId = getSelectedInstanceId() || '1'
-    await updateDeployment(currentDeployment.value.namespace, currentDeployment.value.name, updateForm.value, instanceId)
-    ElMessage.success('更新成功')
-    showUpdateDialog.value = false
-    await fetchDeploymentList()
-  } catch (error) {
-    ElMessage.error('更新失败: ' + (error.response?.data?.message || error.message || '未知错误'))
-  } finally {
-    submitting.value = false
-  }
-}
-
-const handleDelete = async (deployment) => {
-  try {
-    await ElMessageBox.confirm(
-      `确定要删除 Deployment "${deployment.name}" 吗？`,
-      '确认删除',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
-    
-    const instanceId = getSelectedInstanceId() || '1'
-    await deleteDeployment(deployment.namespace, deployment.name, instanceId)
-    ElMessage.success('Deployment 删除成功')
-    await fetchDeploymentList()
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('删除 Deployment 失败: ' + (error.response?.data?.message || error.message || '未知错误'))
+    try {
+        const instanceId = getSelectedInstanceId()
+        await scaleDeployment(scaleForm.row.namespace, scaleForm.row.name, scaleForm.replicas, instanceId)
+        ElMessage.success('扩缩容指令已发送')
+        showScaleDialog.value = false
+        fetchData()
+        // K8s is async, fetch again after a short delay to show progress
+        setTimeout(() => fetchData(), 2000)
+    } catch(e) { 
+        console.error(e)
+        // Log detailed error
+        ElMessage.error('操作失败: ' + (e.response?.data?.message || e.message || '未知错误')) 
     }
-  }
+}
+
+const handleUpdate = async (row) => {
+    try {
+        const instanceId = getSelectedInstanceId()
+        const res = await getDeploymentDetail(row.namespace, row.name, instanceId)
+        if (res.data) {
+            const detail = res.data.deploymentDetail || res.data
+            updateForm.originalData = detail
+            updateForm.row = row
+            // Extract image from containers returned by backend
+            const containers = detail.containers || []
+            updateForm.currentImage = containers.length > 0 ? containers[0].image : ''
+            updateForm.newImage = updateForm.currentImage // Pre-fill new image with current
+            showUpdateDialog.value = true
+        }
+    } catch(e) { ElMessage.error('获取详情失败') }
+}
+
+const confirmUpdate = async () => {
+    try {
+        const instanceId = getSelectedInstanceId()
+        const data = JSON.parse(JSON.stringify(updateForm.originalData))
+        if (data.spec?.template?.spec?.containers?.length > 0) {
+            data.spec.template.spec.containers[0].image = updateForm.newImage
+            await updateDeployment(updateForm.row.namespace, updateForm.row.name, data, instanceId)
+            ElMessage.success('更新镜像指令已发送')
+            showUpdateDialog.value = false
+            fetchData()
+        } else {
+            ElMessage.error('无法解析容器信息，请检查后端返回数据')
+        }
+    } catch(e) { ElMessage.error('更新失败') }
+}
+
+const getPodsBySelector = async (row) => {
+    const instanceId = getSelectedInstanceId()
+    const detailRes = await getDeploymentDetail(row.namespace, row.name, instanceId)
+    const detail = detailRes.data?.deploymentDetail || detailRes.data
+    const selector = detail?.selector
+    if (!selector) { throw new Error('无法获取 Pod 选择器') }
+
+    const podsRes = await getPodList(row.namespace, instanceId)
+    const allPods = podsRes.data?.items || podsRes.data?.podList || []
+    
+    return allPods.filter(pod => {
+        const podLabels = pod.labels || {}
+        return Object.entries(selector).every(([k, v]) => podLabels[k] === v)
+    })
+}
+
+const handleShell = async (row) => {
+    try {
+        const pods = await getPodsBySelector(row)
+        if (pods.length === 0) {
+            ElMessageBox.alert('未找到属于该 Deployment 的 Pod。可能副本数为 0，或者 Pod 尚未创建。', '提示', {
+                confirmButtonText: '确定',
+                type: 'warning'
+            })
+            return
+        }
+        
+        // Populate shell selection list
+        shellPodList.value = pods
+        
+        // If only 1 pod and 1 container, connect directly
+        if (pods.length === 1 && pods[0].containers && pods[0].containers.length === 1) {
+            terminalPod.value = {
+                namespace: row.namespace,
+                podName: pods[0].name,
+                containerName: pods[0].containers[0].name
+            }
+            showTerminalDialog.value = true
+            return
+        }
+
+        // Else, show selection dialog
+        selectedShellPodName.value = pods[0].name
+        handleShellPodChange(pods[0].name) // init containers
+        showContainerSelectDialog.value = true
+    } catch(e) {
+        console.error(e)
+        ElMessage.error('准备 Shell 环境失败: ' + e.message)
+    }
+}
+
+const handleShellPodChange = (podName) => {
+    const pod = shellPodList.value.find(p => p.name === podName)
+    if (pod && pod.containers) {
+        shellContainerList.value = pod.containers.map(c => c.name)
+        selectedContainerForTerminal.value = shellContainerList.value[0] || ''
+    } else {
+        shellContainerList.value = []
+        selectedContainerForTerminal.value = ''
+    }
+}
+
+const confirmContainerSelect = () => {
+    const pod = shellPodList.value.find(p => p.name === selectedShellPodName.value)
+    terminalPod.value = {
+        namespace: pod.namespace, // Use pod namespace to be safe
+        podName: selectedShellPodName.value,
+        containerName: selectedContainerForTerminal.value
+    }
+    showContainerSelectDialog.value = false
+    showTerminalDialog.value = true
+}
+
+const handleTerminalClose = () => {
+    showTerminalDialog.value = false
+    // cleanup if needed
+}
+
+const handleCommand = (cmd, row) => {
+    if (cmd === 'shell') handleShell(row)
+    if (cmd === 'logs') handleLogs(row)
+    if (cmd === 'delete') handleDelete(row)
+}
+
+const handleLogs = async (row) => {
+    try {
+        logLoading.value = true
+        const pods = await getPodsBySelector(row)
+        logPodList.value = pods
+
+        if (logPodList.value.length === 0) {
+            ElMessageBox.alert('未找到属于该 Deployment 的 Pod。可能副本数为 0，或者 Pod 尚未创建。', '提示', {
+                confirmButtonText: '确定',
+                type: 'warning'
+            })
+            return
+        }
+
+        selectedLogPod.value = logPodList.value[0].name
+        showLogsDialog.value = true
+        fetchLogs()
+    } catch(e) { 
+        console.error(e)
+        ElMessage.error('获取 Pod 日志失败') 
+    } finally {
+        logLoading.value = false
+    }
+}
+
+const fetchLogs = async () => {
+    if (!selectedLogPod.value) return
+    try {
+        const instanceId = getSelectedInstanceId()
+        const row = logPodList.value.find(p => p.name === selectedLogPod.value)
+        const container = row?.containers ? row.containers[0].name : '' 
+        const res = await getPodLogs(row.namespace, selectedLogPod.value, container, instanceId, { tailLines: 500 })
+        logContent.value = typeof res.data === 'string' ? res.data : JSON.stringify(res.data, null, 2)
+    } catch(e) {
+        logContent.value = 'Fetch logs failed.'
+    }
+}
+const handleDelete = (row) => {
+    ElMessageBox.confirm(`确定删除 ${row.name}?`, '警告', { type: 'warning' })
+    .then(async () => {
+         await deleteDeployment(row.namespace, row.name)
+         ElMessage.success('删除成功')
+         fetchData()
+    })
+}
+
+const createFormRef = ref(null)
+const createRules = {
+  name: [{ required: true, message: '请输入名称', trigger: 'blur' }],
+  namespace: [{ required: true, message: '请输入命名空间', trigger: 'blur' }],
+  image: [{ required: true, message: '请输入镜像', trigger: 'blur' }],
+}
+
+const handleCreate = async () => {
+    if (!createFormRef.value) return
+    
+    await createFormRef.value.validate(async (valid) => {
+        if (valid) {
+            try {
+                const instanceId = getSelectedInstanceId()
+                // Construct payload matching backend 
+                const data = {
+                    name: createForm.name,
+                    namespace: createForm.namespace,
+                    image: createForm.image,
+                    replicas: createForm.replicas,
+                    // port and labels are optional in backend
+                }
+                
+                // Note: namespace is passed in URL in API call usually, but let's check API def
+                // api: createDeployment(namespace, data, instanceId)
+                await createDeployment(createForm.namespace, data, instanceId)
+                
+                ElMessage.success('创建成功')
+                showCreateDialog.value = false
+                fetchData()
+            } catch (e) {
+                console.error(e)
+                ElMessage.error('创建失败: ' + (e.response?.data?.message || e.message || '未知错误'))
+            }
+        }
+    })
 }
 
 onMounted(() => {
-  fetchNamespaceList()
-  fetchDeploymentList()
+    fetchData()
+    fetchNamespaces()
 })
 </script>
 
 <style scoped>
-.deployment-management {
-  padding: 20px;
+.filter-bar {
+  padding: 16px 0;
+  border-bottom: 1px solid #f0f2f5;
+  margin-bottom: 16px;
 }
-
-.page-header-card {
-  margin-bottom: 20px;
-}
-
-.page-header {
+.filter-left {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 12px;
+}
+.filter-label {
+  font-size: 14px;
+  color: #606266;
+}
+.filter-input {
+  width: 240px;
 }
 
-.page-header h2 {
-  margin: 0 0 8px 0;
+.table-wrapper {
+  background: white;
+}
+
+/* Name Column */
+.name-cell {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.deployment-icon {
   font-size: 24px;
-  font-weight: 600;
+  color: var(--primary-color);
+  background: rgba(64, 158, 255, 0.1);
+  padding: 6px;
+  border-radius: 6px;
 }
-
-.page-header p {
-  margin: 0;
-  color: var(--el-text-color-secondary);
-}
-
-.header-actions {
+.name-content {
   display: flex;
-  align-items: center;
-  gap: 15px;
+  flex-direction: column;
+}
+.name-link {
+  color: var(--primary-color);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  font-size: 14px;
+}
+.name-link:hover { text-decoration: underline; }
+.resource-type {
+  font-size: 12px;
+  color: #E6A23C;
+  margin-top: 2px;
 }
 
-.namespace-selector {
+/* Labels */
+.label-cell {
   display: flex;
   align-items: center;
   gap: 8px;
 }
-
-.selector-label {
-  font-size: 14px;
-  color: var(--el-text-color-regular);
-  white-space: nowrap;
+.label-icon {
+  color: #909399;
+}
+.label-count {
+  cursor: pointer;
+  background: #fef0f0;
+  color: #f56c6c;
+  border-color: #fde2e2;
 }
 
-.content-card {
-  min-height: 400px;
-}
-
-/* 容器配置样式 */
-.container-config {
-  margin-bottom: 20px;
-}
-
-.container-card {
-  margin-bottom: 15px;
-}
-
-.container-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-/* 端口配置样式 */
-.port-config {
-  margin-bottom: 10px;
-  padding: 10px;
-  background-color: #f5f7fa;
-  border-radius: 4px;
-}
-
-/* 环境变量配置样式 */
-.env-config {
-  margin-bottom: 10px;
-  padding: 10px;
-  background-color: #f5f7fa;
-  border-radius: 4px;
-}
-
-/* 标签配置样式 */
-.label-config {
-  margin-bottom: 10px;
-}
-
-.annotation-config {
-  margin-bottom: 10px;
-}
-
-.selector-config {
-  margin-bottom: 10px;
-}
-
-/* YAML编辑器样式 */
-.yaml-editor {
-  padding: 20px;
-}
-
-.editor-toolbar {
-  margin: 15px 0;
-  display: flex;
-  gap: 10px;
-}
-
-.yaml-textarea {
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-  font-size: 13px;
-}
-
-:deep(.yaml-textarea .el-textarea__inner) {
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-/* 对话框底部样式 */
-.dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-/* 表单分隔线样式 */
-:deep(.el-divider__text) {
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-
-/* 卡片间距调整 */
-:deep(.el-card__body) {
-  padding: 15px;
-}
-
-/* 表单项间距调整 */
-:deep(.el-form-item) {
-  margin-bottom: 15px;
-}
-
-/* 按钮组样式 */
-:deep(.el-button-group) {
-  .el-button {
-    padding: 5px 10px;
-  }
-}
-
-/* 响应式调整 */
-@media (max-width: 768px) {
-  :deep(.el-col) {
-    margin-bottom: 10px;
-  }
-}
-
-.content-card {
-  flex: 1;
+/* Pods */
+.pods-cell {
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  align-items: center;
+}
+.pods-count {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.monitor-icon {
+  color: #67C23A;
+  font-size: 16px;
+}
+.pods-status {
+  font-size: 11px;
+  margin-top: 2px;
+}
+.status-ready { color: #67C23A; }
+.status-warn { color: #E6A23C; }
+.text-green { color: #67C23A; }
+.text-warning { color: #E6A23C; }
+
+/* Resource */
+.resource-cell {
+  font-size: 12px;
+  font-family: monospace;
+}
+.res-row { margin-bottom: 2px; }
+.res-label { color: #909399; margin-right: 4px; }
+.res-val.request { color: #67C23A; }
+.res-val.limit { color: #E6A23C; }
+
+/* Actions */
+.autoops-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+.el-dropdown-link {
+  cursor: pointer;
+  color: var(--primary-color);
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  margin-left: 4px;
 }
 
-.table-container {
-  flex: 1;
+/* Image */
+.image-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.image-icon { color: #909399; }
+.image-name {
+  font-size: 13px;
+  color: #606266;
+  max-width: 140px;
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.more-images {
+  font-size: 12px;
+  color: var(--primary-color);
 }
 
-/* 表格滚动条样式优化 */
-:deep(.el-table__body-wrapper) {
-  scrollbar-width: thin;
-  scrollbar-color: #c1c1c1 transparent;
+.log-container {
+  background: #1e1e1e;
+  color: #d4d4d4;
+  padding: 12px;
+  border-radius: 4px;
+  height: 500px;
+  overflow-y: auto;
+  font-family: monospace;
+  white-space: pre-wrap;
+  font-size: 12px;
 }
 
-:deep(.el-table__body-wrapper::-webkit-scrollbar) {
-  width: 6px;
-  height: 6px;
+/* Ops */
+.ops-cell {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-start;
 }
-
-:deep(.el-table__body-wrapper::-webkit-scrollbar-track) {
-  background: transparent;
+.op-btn {
+  border: none;
+  font-size: 14px;
 }
+.op-btn.blue { background: rgba(64, 158, 255, 0.1); color: #409EFF; }
+.op-btn.blue:hover { background: #409EFF; color: white; }
 
-:deep(.el-table__body-wrapper::-webkit-scrollbar-thumb) {
-  background-color: #c1c1c1;
-  border-radius: 3px;
-}
+.op-btn.yellow { background: rgba(230, 162, 60, 0.1); color: #E6A23C; }
+.op-btn.yellow:hover { background: #E6A23C; color: white; }
 
-:deep(.el-table__body-wrapper::-webkit-scrollbar-thumb:hover) {
-  background-color: #a8a8a8;
+.op-btn.green { background: rgba(103, 194, 58, 0.1); color: #67C23A; }
+.op-btn.green:hover { background: #67C23A; color: white; }
+
+.op-btn.gray { background: rgba(144, 147, 153, 0.1); color: #909399; }
+.op-btn.gray:hover { background: #909399; color: white; }
+
+.op-btn.blue-light { background: #ecf5ff; color: #409EFF; }
+.op-btn.blue-light:hover { background: #409EFF; color: white; }
+
+.op-btn.red { background: rgba(245, 108, 108, 0.1); color: #F56C6C; }
+.op-btn.red:hover { background: #F56C6C; color: white; }
+
+.pagination-container {
+    padding-top: 20px;
+    display: flex;
+    justify-content: center;
 }
 </style>

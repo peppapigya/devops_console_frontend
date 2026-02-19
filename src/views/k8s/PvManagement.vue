@@ -7,7 +7,7 @@
           <p>查看和管理 Kubernetes Persistent Volumes</p>
         </div>
         <div class="header-actions">
-          <el-button type="primary" class="cyber-button" @click="showCreateDialog = true">
+          <el-button type="primary" class="autoops-btn-primary" @click="showCreateDialog = true">
             <el-icon><Plus /></el-icon>
             创建 PV
           </el-button>
@@ -16,10 +16,10 @@
     </el-card>
 
     <el-card class="content-card cyber-card">
-      <div class="table-container">
+      <div class="autoops-table-wrapper">
         <el-table 
           :data="pvList" 
-          style="width: 100%" 
+          style="width: 100%" class="autoops-table" 
           v-loading="loading"
           element-loading-background="rgba(0, 0, 0, 0.5)"
           height="calc(100vh - 280px)"
@@ -37,7 +37,7 @@
           <el-table-column prop="reclaimPolicy" label="回收策略" width="120" />
           <el-table-column prop="status" label="状态" width="100">
             <template #default="scope">
-              <el-tag :type="getStatusType(scope.row.status)" effect="dark" class="cyber-tag-static">
+              <el-tag :type="getStatusType(scope.row.status)" effect="dark" class="autoops-tag">
                 {{ scope.row.status }}
               </el-tag>
             </template>

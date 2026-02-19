@@ -1,69 +1,90 @@
 <template>
-  <div class="pipeline-list-page">
-    <!-- Header / Stats Section -->
-    <div class="stats-section">
-       <div class="stat-card">
-          <div class="stat-icon-wrapper blue-glow">
-            <el-icon><Monitor /></el-icon>
-          </div>
-          <div class="stat-info">
-            <span class="stat-value">{{ totalPipelines }}</span>
-            <span class="stat-label">流水线总数</span>
-          </div>
+  <div class="page-container">
+    <el-card class="page-header-card">
+       <div class="page-header">
+         <div class="header-left">
+           <div class="header-title-wrapper">
+             <h2>流水线管理</h2>
+             <p class="subtitle">CI/CD 构建与部署流程</p>
+           </div>
+         </div>
+         <div class="header-right">
+            <el-button type="primary" @click="handleCreate">
+               <el-icon><Plus /></el-icon> 新建流水线
+            </el-button>
+            <el-button @click="refreshData" :loading="loading">
+               <el-icon><Refresh /></el-icon>
+            </el-button>
+         </div>
        </div>
-       <div class="stat-card">
-          <div class="stat-icon-wrapper green-glow">
-            <el-icon><VideoPlay /></el-icon>
-          </div>
-          <div class="stat-info">
-            <span class="stat-value">{{ activeRuns }}</span>
-            <span class="stat-label">运行中</span>
-          </div>
-       </div>
-       <div class="stat-card">
-          <div class="stat-icon-wrapper purple-glow">
-            <el-icon><TrendCharts /></el-icon>
-          </div>
-          <div class="stat-info">
-            <span class="stat-value">{{ successRate }}%</span>
-            <span class="stat-label">成功率</span>
-          </div>
-       </div>
-    </div>
+    </el-card>
+
+    <!-- Stats Section -->
+    <el-row :gutter="20" class="mb-20">
+       <el-col :span="8">
+          <el-card class="stat-card" shadow="hover">
+            <div class="stat-content">
+               <div class="stat-icon bg-gradient-blue"><el-icon><Monitor /></el-icon></div>
+               <div class="stat-info">
+                  <div class="stat-value">{{ totalPipelines }}</div>
+                  <div class="stat-label">流水线总数</div>
+               </div>
+            </div>
+          </el-card>
+       </el-col>
+       <el-col :span="8">
+          <el-card class="stat-card" shadow="hover">
+            <div class="stat-content">
+               <div class="stat-icon bg-gradient-green"><el-icon><VideoPlay /></el-icon></div>
+               <div class="stat-info">
+                  <div class="stat-value">{{ activeRuns }}</div>
+                  <div class="stat-label">运行中</div>
+               </div>
+            </div>
+          </el-card>
+       </el-col>
+       <el-col :span="8">
+          <el-card class="stat-card" shadow="hover">
+            <div class="stat-content">
+               <div class="stat-icon bg-gradient-purple"><el-icon><TrendCharts /></el-icon></div>
+               <div class="stat-info">
+                  <div class="stat-value">{{ successRate }}%</div>
+                  <div class="stat-label">成功率</div>
+               </div>
+            </div>
+          </el-card>
+       </el-col>
+    </el-row>
 
     <!-- Main Content -->
-    <div class="main-content-panel">
-       <!-- Toolbar -->
-       <div class="toolbar">
-          <div class="left-tools">
-             <el-input
-               v-model="searchQuery"
-               placeholder="搜索流水线..."
-               class="cyber-input"
-               prefix-icon="Search"
-               clearable
-               @change="refreshData"
-             />
-             <el-radio-group v-model="viewMode" size="small" class="view-toggle">
-                <el-radio-button label="list"><el-icon><List /></el-icon></el-radio-button>
-                <el-radio-button label="grid"><el-icon><Grid /></el-icon></el-radio-button>
-             </el-radio-group>
+    <el-card class="content-card">
+       <template #header>
+          <div class="flex-between">
+             <div class="left-tools">
+                <el-input
+                  v-model="searchQuery"
+                  placeholder="搜索流水线..."
+                  style="width: 300px"
+                  prefix-icon="Search"
+                  clearable
+                  @change="refreshData"
+                />
+             </div>
+             <div class="right-tools">
+                <el-radio-group v-model="viewMode" size="small">
+                   <el-radio-button label="list"><el-icon><List /></el-icon></el-radio-button>
+                   <el-radio-button label="grid"><el-icon><Grid /></el-icon></el-radio-button>
+                </el-radio-group>
+             </div>
           </div>
-          <div class="right-tools">
-             <el-button type="primary" class="cyber-button" @click="handleCreate">
-                <el-icon><Plus /></el-icon> New Pipeline
-             </el-button>
-             <el-button class="cyber-button-ghost" @click="refreshData" :loading="loading">
-                <el-icon><Refresh /></el-icon>
-             </el-button>
-          </div>
-       </div>
+       </template>
 
        <!-- Grid View -->
        <div v-if="viewMode === 'grid'" class="pipeline-grid" v-loading="loading">
+          <el-empty v-if="filteredPipelines.length === 0" description="暂无流水线" />
           <div v-for="item in filteredPipelines" :key="item.id" class="pipeline-card" @click="handleHistory(item)">
              <div class="card-header">
-                <div class="pipeline-icon" :class="getStatusClass(item.last_run_status)">
+                <div class="pipeline-icon" :class="getStatusType(item.last_run_status)">
                    <el-icon><Cpu /></el-icon>
                 </div>
                 <div class="card-actions" @click.stop>
@@ -72,7 +93,7 @@
                       <template #dropdown>
                        <el-dropdown-menu>
                            <el-dropdown-item @click="handleEdit(item)">编辑</el-dropdown-item>
-                           <el-dropdown-item @click="handleDelete(item)" style="color: #F56C6C">删除</el-dropdown-item>
+                           <el-dropdown-item @click="handleDelete(item)" class="text-danger">删除</el-dropdown-item>
                         </el-dropdown-menu>
                       </template>
                    </el-dropdown>
@@ -82,7 +103,7 @@
                 <h3 class="pipeline-title">{{ item.name }}</h3>
                 <p class="pipeline-desc">{{ item.description || '暂无描述' }}</p>
                 <div class="pipeline-meta">
-                   <el-tag size="small" effect="dark" class="cyber-tag">{{ item.branch || 'main' }}</el-tag>
+                   <el-tag size="small" effect="plain">{{ item.branch || 'main' }}</el-tag>
                    <span class="meta-time">{{ formatTime(item.last_run_time) }}</span>
                 </div>
              </div>
@@ -100,12 +121,12 @@
 
        <!-- List View -->
        <div v-else class="pipeline-list" v-loading="loading">
-           <el-table :data="filteredPipelines" style="width: 100%" class="cyber-table">
+           <el-table :data="filteredPipelines" style="width: 100%">
              <el-table-column prop="name" label="流水线名称" min-width="200">
                 <template #default="{ row }">
                    <div class="list-name-col">
-                      <div class="list-icon" :class="getStatusClass(row.last_run_status)">
-                         <el-icon><Cpu /></el-icon>
+                      <div class="list-icon" :class="getStatusType(row.last_run_status) + '-bg'">
+                         <el-icon :class="getStatusType(row.last_run_status) + '-text'"><Cpu /></el-icon>
                       </div>
                       <div class="name-info">
                          <span class="name-text">{{ row.name }}</span>
@@ -124,7 +145,7 @@
              </el-table-column>
              <el-table-column prop="last_run" label="最近状态" width="150">
                  <template #default="{ row }">
-                    <el-tag :type="getStatusType(row.last_run_status)" effect="dark" class="status-tag">
+                    <el-tag :type="getStatusType(row.last_run_status)" effect="light">
                        {{ row.last_run_status || '未运行' }}
                     </el-tag>
                  </template>
@@ -137,30 +158,28 @@
              <el-table-column label="操作" width="180" align="right">
                 <template #default="{ row }">
                    <el-button-group>
-                      <el-button size="small" class="action-btn" @click="handleRun(row)"><el-icon><VideoPlay /></el-icon></el-button>
-                      <el-button size="small" class="action-btn" @click="handleHistory(row)"><el-icon><Timer /></el-icon></el-button>
-                      <el-button size="small" class="action-btn" @click="handleEdit(row)"><el-icon><Edit /></el-icon></el-button>
-                      <el-button size="small" class="action-btn danger" @click="handleDelete(row)"><el-icon><Delete /></el-icon></el-button>
+                      <el-button size="small" @click="handleRun(row)"><el-icon><VideoPlay /></el-icon></el-button>
+                      <el-button size="small" @click="handleHistory(row)"><el-icon><Timer /></el-icon></el-button>
+                      <el-button size="small" @click="handleEdit(row)"><el-icon><Edit /></el-icon></el-button>
+                      <el-button size="small" type="danger" plain @click="handleDelete(row)"><el-icon><Delete /></el-icon></el-button>
                    </el-button-group>
                 </template>
              </el-table-column>
           </el-table>
        </div>
-    </div>
-
-    <!-- Create/Edit Dialog Removed -->
+    </el-card>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed, reactive, watch } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { getPipelines, triggerPipeline, deletePipeline } from '@/api/cicd.js'
 import { ElMessage, ElMessageBox, ElNotification } from 'element-plus'
 import {
   Monitor, VideoPlay, TrendCharts, Search, List, Grid,
   Plus, Refresh, MoreFilled, Cpu, ArrowRight, Connection,
-  Timer, Edit, Delete, Rank
+  Timer, Edit, Delete
 } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 
@@ -169,14 +188,8 @@ const viewMode = ref('grid')
 const loading = ref(false)
 const searchQuery = ref('')
 const pipelines = ref([])
-// const dialogVisible = ref(false) // Removed
-const editingId = ref(null)
 
-const editingPipelineData = ref(null)
-
-// Stats (Mocked for now, can be calculated from data)
-
-// Stats (Mocked for now, can be calculated from data)
+// Stats (Mocked for now)
 const totalPipelines = ref(0)
 const activeRuns = ref(0)
 const successRate = ref(98)
@@ -191,11 +204,10 @@ const fetchData = async () => {
             pageSize: pageSize.value,
             keyword: searchQuery.value
         })
-      console.log(res.data.data.data)
+        console.log(res.data.data.data)
         pipelines.value = res.data.data.data || []
         totalPipelines.value = res.data.data.total || pipelines.value.length
 
-        // Simple mock calc for active runs if backend doesn't return
         const activeCount = pipelines.value.filter(p => p.last_run_status === 'Running').length
         if (activeCount > 0) activeRuns.value = activeCount
     } catch (e) {
@@ -211,14 +223,8 @@ const refreshData = () => {
 }
 
 const filteredPipelines = computed(() => {
-    // Backend filtering is preferred with pagination, but if local:
     return pipelines.value
 })
-
-// Debounce search could be added here to trigger fetchData on search change
-// For now, let's just make search trigger refresh or filter locally if we fetch all?
-// Since we switched to page interface, we should probably fetch on search.
-// But for now, user just asked for "page interface", let's assume server-side paging.
 
 const formatTime = (time) => {
     if (!time) return '-'
@@ -262,17 +268,15 @@ const handleRun = async (row) => {
           type: 'success',
           duration: 3000
        })
-       fetchData() // Refresh status
+       fetchData()
     } catch(e) {
        console.error(e)
+       ElMessage.error(e.response?.data?.message || '触发流水线失败')
     }
 }
 const handleHistory = (row) => {
-    // Navigate to pipeline detail or latest run
-    // For now assuming we go to latest run or list
     router.push(`/cicd/runs/${row.id}-latest`)
 }
-
 
 const handleDelete = async (row) => {
     try {
@@ -297,154 +301,27 @@ onMounted(fetchData)
 </script>
 
 <style scoped>
-.pipeline-list-page {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    background-color: transparent; /* Rely on layout bg */
-}
-
-/* Stats Section */
-.stats-section {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
-}
-
-.stat-card {
-    background: linear-gradient(135deg, #ffffff 0%, #f7f9fc 100%);
-    border-radius: 12px;
-    padding: 24px;
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.04);
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    border: 1px solid rgba(0,0,0,0.04);
-    position: relative;
-    overflow: hidden;
-}
-
-.stat-card::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 4px;
-    background: transparent;
-    transition: background 0.3s;
-}
-
-.stat-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 32px rgba(50, 108, 229, 0.1);
-}
-
-.stat-card:nth-child(1):hover::after { background: #326CE5; }
-.stat-card:nth-child(2):hover::after { background: #13ce66; }
-.stat-card:nth-child(3):hover::after { background: #8A0A4A; }
-
-.stat-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.06);
-}
-
-.stat-icon-wrapper {
-    width: 56px;
-    height: 56px;
-    border-radius: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 24px;
-}
-
-.blue-glow { background: rgba(50, 108, 229, 0.1); color: #326CE5; }
-.green-glow { background: rgba(19, 206, 102, 0.1); color: #13ce66; }
-.purple-glow { background: rgba(138, 10, 74, 0.1); color: #8A0A4A; }
-
-.stat-info { display: flex; flex-direction: column; }
-.stat-value { font-size: 24px; font-weight: 700; color: #303133; }
-.stat-label { font-size: 13px; color: #909399; margin-top: 4px; }
-
-/* Main Panel */
-.main-content-panel {
-    background: #fff;
-    border-radius: 12px;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    padding: 20px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.02);
-    overflow: hidden;
-}
-
-.toolbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 24px;
-}
-
-.left-tools {
-    display: flex;
-    gap: 16px;
-    align-items: center;
-    flex: 1;
-}
-
-.cyber-input {
-    width: 300px;
-    transition: all 0.3s ease;
-}
-
-.cyber-input:hover, .cyber-input:focus-within {
-    box-shadow: 0 0 8px rgba(50, 108, 229, 0.2);
-}
-
-.view-toggle :deep(.el-radio-button__inner) {
-    padding: 8px 16px;
-    background: transparent;
-    border: 1px solid #DCDFE6;
-}
-
-.view-toggle :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
-    background: #326CE5;
-    border-color: #326CE5;
-    box-shadow: none;
-    color: white;
-}
-
-.right-tools { display: flex; gap: 12px; }
-
-/* Grid View */
 .pipeline-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 20px;
-    overflow-y: auto;
-    padding-bottom: 20px;
 }
 
 .pipeline-card {
     background: #fff;
-    border: 1px solid #EBEEF5;
-    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
     padding: 20px;
     display: flex;
     flex-direction: column;
     gap: 16px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    overflow: hidden;
+    transition: all 0.3s;
     cursor: pointer;
 }
 
 .pipeline-card:hover {
-    border-color: #326CE5;
-    box-shadow: 0 8px 24px rgba(50, 108, 229, 0.1);
+    border-color: var(--primary-color);
+    box-shadow: var(--shadow-hover);
     transform: translateY(-2px);
 }
 
@@ -457,126 +334,66 @@ onMounted(fetchData)
 .pipeline-icon {
     width: 40px;
     height: 40px;
-    border-radius: 10px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 20px;
 }
 
+.pipeline-icon.success { background: #e8f5e9; color: #4caf50; }
+.pipeline-icon.danger { background: #ffebee; color: #f44336; }
+.pipeline-icon.warning { background: #fff3e0; color: #ff9800; }
+.pipeline-icon.info { background: #f5f7fa; color: #909399; }
+
 .card-body { flex: 1; }
-.pipeline-title { font-size: 16px; font-weight: 600; color: #303133; margin: 0 0 8px 0; }
-.pipeline-desc { font-size: 13px; color: #909399; margin: 0 0 16px 0; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.pipeline-title { font-size: 16px; font-weight: 600; color: var(--text-main); margin: 0 0 8px 0; }
+.pipeline-desc { font-size: 13px; color: var(--text-sub); margin: 0 0 16px 0; line-height: 1.4; height: 36px; overflow: hidden; }
 
 .pipeline-meta { display: flex; align-items: center; gap: 12px; }
-.meta-time { font-size: 12px; color: #C0C4CC; }
+.meta-time { font-size: 12px; color: var(--text-sub); }
 
 .card-footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-top: 1px solid #f4f4f5;
+    border-top: 1px solid #f0f0f0;
     padding-top: 16px;
 }
 
 .status-indicator { display: flex; align-items: center; gap: 6px; }
 .status-dot { width: 8px; height: 8px; border-radius: 50%; }
-.status-text { font-size: 12px; color: #606266; font-weight: 500; }
+.status-text { font-size: 12px; color: var(--text-sub); }
 
-/* Status Styles */
-.status-success { background: rgba(19, 206, 102, 0.1); color: #13ce66; }
-.status-dot.status-success { background: #13ce66; }
-
-.status-failed { background: rgba(245, 108, 108, 0.1); color: #F56C6C; }
-.status-dot.status-failed { background: #F56C6C; }
-
-.status-running { background: rgba(50, 108, 229, 0.1); color: #326CE5; }
-.status-dot.status-running { background: #326CE5; animation: pulse 1.5s infinite; }
-
-.status-pending { background: #f4f4f5; color: #909399; }
-.status-dot.status-pending { background: #909399; }
+.status-success { background: #67c23a; }
+.status-failed { background: #f56c6c; }
+.status-running { background: #409eff; animation: pulse 1.5s infinite; }
+.status-pending { background: #909399; }
 
 @keyframes pulse {
-    0% { box-shadow: 0 0 0 0 rgba(50, 108, 229, 0.4); }
-    70% { box-shadow: 0 0 0 6px rgba(50, 108, 229, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(50, 108, 229, 0); }
+    0% { box-shadow: 0 0 0 0 rgba(64, 158, 255, 0.4); }
+    70% { box-shadow: 0 0 0 6px rgba(64, 158, 255, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(64, 158, 255, 0); }
 }
 
-/* Dark Mode Support */
-.dark .stats-section .stat-card {
-    background: #1e1e2d;
-    border-color: #303030;
-}
-.dark .stat-value { color: #fff; }
-.dark .main-content-panel { background: #1e1e2d; }
-.dark .pipeline-card { background: #1e1e2d; border-color: #303030; }
-.dark .pipeline-card:hover { border-color: #326CE5; }
-.dark .pipeline-title { color: #fff; }
-.dark .card-footer { border-top-color: #303030; }
-
-/* List View */
 .list-name-col { display: flex; align-items: center; gap: 12px; }
 .list-icon {
     width: 36px; height: 36px; border-radius: 8px;
     display: flex; align-items: center; justify-content: center; font-size: 18px;
 }
+.list-icon.success-bg { background: #e8f5e9; }
+.list-icon.danger-bg { background: #ffebee; }
+.list-icon.warning-bg { background: #fff3e0; }
+.list-icon.info-bg { background: #f5f7fa; }
+
+.list-icon .success-text { color: #4caf50; }
+.list-icon .danger-text { color: #f56c6c; }
+.list-icon .warning-text { color: #ff9800; }
+.list-icon .info-text { color: #909399; }
+
 .name-info { display: flex; flex-direction: column; }
-.name-text { font-weight: 500; color: #303133; }
-.desc-text { font-size: 12px; color: #909399; }
-.repo-info { display: flex; align-items: center; gap: 6px; color: #606266; font-size: 13px; }
-
-.dark .name-text { color: #fff; }
-.dark .list-icon { background-color: rgba(255,255,255,0.05); }
-.dark .cyber-table { background: transparent; --el-table-bg-color: transparent; }
-
-/* Steps Manager */
-.steps-manager {
-    border: 1px solid #dcdfe6;
-    border-radius: 4px;
-    padding: 16px;
-    min-height: 200px;
-}
-
-.steps-toolbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-}
-
-.drag-hint { font-size: 12px; color: #909399; display: flex; align-items: center; gap: 4px; }
-
-.steps-list-container {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.draggable-step-item {
-    background: #f4f4f5;
-    border: 1px solid #e4e7ed;
-    border-radius: 4px;
-    padding: 8px 12px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: move;
-    transition: all 0.2s;
-}
-
-.draggable-step-item:hover {
-    background: #fff;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-}
-
-.step-handle { cursor: move; color: #909399; }
-.step-content-mini { flex: 1; display: flex; flex-direction: column; }
-.step-name-row { font-weight: 500; font-size: 14px; }
-.step-img-txt { font-size: 12px; color: #909399; }
-.step-actions-mini { display: flex; }
-
-.dark .steps-manager { border-color: #4C4D4F; }
-.dark .draggable-step-item { background: #2b2b2c; border-color: #4C4D4F; }
-.dark .draggable-step-item:hover { background: #363637; }
-.dark .step-name-row { color: #fff; }
+.name-text { font-weight: 500; color: var(--text-main); }
+.desc-text { font-size: 12px; color: var(--text-sub); }
+.repo-info { display: flex; align-items: center; gap: 6px; color: var(--text-sub); font-size: 13px; }
+.text-danger { color: var(--danger-color); }
 </style>

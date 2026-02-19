@@ -1,91 +1,84 @@
 <template>
-  <div class="index-management">
-    <div class="page-header">
-      <h2>索引管理</h2>
-      <div class="header-actions">
-        <el-input
-          v-model="searchQuery"
-          placeholder="搜索索引名称"
-          style="width: 300px; margin-right: 10px"
-          @input="handleSearch"
-        >
-          <template #prefix>
-            <el-icon><Search /></el-icon>
-          </template>
-        </el-input>
-        <el-button type="primary" @click="showCreateDialog = true">
-          <el-icon><Plus /></el-icon>
-          创建索引
-        </el-button>
-        <el-button @click="refreshData">
-          <el-icon><Refresh /></el-icon>
-          刷新
-        </el-button>
-      </div>
-    </div>
+  <div class="page-container">
+    <!-- Header -->
+    <el-card class="page-header-card">
+       <div class="page-header">
+         <div class="header-left">
+           <div class="header-icon-wrapper">
+             <el-icon :size="24"><Collection /></el-icon>
+           </div>
+           <div class="header-title-wrapper">
+             <h2>索引管理</h2>
+             <p class="subtitle">创建、监控与维护 Elasticsearch 索引</p>
+           </div>
+         </div>
+         <div class="header-right">
+            <el-input
+              v-model="searchQuery"
+              placeholder="搜索索引名称"
+              class="w-64 mr-2"
+              @input="handleSearch"
+              :prefix-icon="Search"
+            />
+            <el-button type="primary" @click="showCreateDialog = true" :icon="Plus">创建索引</el-button>
+            <el-button @click="refreshData" :icon="Refresh">刷新</el-button>
+         </div>
+       </div>
+    </el-card>
 
-    <div class="stats-cards">
-      <el-row :gutter="20">
-        <el-col :span="6">
-          <el-card class="stat-card">
+    <!-- Stats Cards -->
+    <el-row :gutter="20" class="mb-20">
+       <el-col :span="6">
+          <el-card class="stat-card" shadow="hover">
             <div class="stat-content">
-              <div class="stat-icon">
-                <el-icon color="#409EFF"><DocumentCopy /></el-icon>
-              </div>
-              <div class="stat-info">
-                <div class="stat-value">{{ stats.totalIndices }}</div>
-                <div class="stat-label">总索引数</div>
-              </div>
+               <div class="stat-icon bg-gradient-blue"><el-icon><DocumentCopy /></el-icon></div>
+               <div class="stat-info">
+                  <div class="stat-value">{{ stats.totalIndices }}</div>
+                  <div class="stat-label">总索引数</div>
+               </div>
             </div>
           </el-card>
-        </el-col>
-        <el-col :span="6">
-          <el-card class="stat-card">
+       </el-col>
+       <el-col :span="6">
+          <el-card class="stat-card" shadow="hover">
             <div class="stat-content">
-              <div class="stat-icon">
-                <el-icon color="#67C23A"><Files /></el-icon>
-              </div>
-              <div class="stat-info">
-                <div class="stat-value">{{ formatBytes(stats.totalSize) }}</div>
-                <div class="stat-label">总存储大小</div>
-              </div>
+               <div class="stat-icon bg-gradient-green"><el-icon><Files /></el-icon></div>
+               <div class="stat-info">
+                  <div class="stat-value">{{ formatBytes(stats.totalSize) }}</div>
+                  <div class="stat-label">总存储大小</div>
+               </div>
             </div>
           </el-card>
-        </el-col>
-        <el-col :span="6">
-          <el-card class="stat-card">
+       </el-col>
+       <el-col :span="6">
+          <el-card class="stat-card" shadow="hover">
             <div class="stat-content">
-              <div class="stat-icon">
-                <el-icon color="#E6A23C"><Tickets /></el-icon>
-              </div>
-              <div class="stat-info">
-                <div class="stat-value">{{ stats.totalDocs.toLocaleString() }}</div>
-                <div class="stat-label">总文档数</div>
-              </div>
+               <div class="stat-icon bg-gradient-orange"><el-icon><Tickets /></el-icon></div>
+               <div class="stat-info">
+                  <div class="stat-value">{{ stats.totalDocs.toLocaleString() }}</div>
+                  <div class="stat-label">总文档数</div>
+               </div>
             </div>
           </el-card>
-        </el-col>
-        <el-col :span="6">
-          <el-card class="stat-card">
+       </el-col>
+       <el-col :span="6">
+          <el-card class="stat-card" shadow="hover">
             <div class="stat-content">
-              <div class="stat-icon">
-                <el-icon color="#F56C6C"><Delete /></el-icon>
-              </div>
-              <div class="stat-info">
-                <div class="stat-value">{{ stats.deletedDocs.toLocaleString() }}</div>
-                <div class="stat-label">已删除文档</div>
-              </div>
+               <div class="stat-icon bg-gradient-red"><el-icon><Delete /></el-icon></div>
+               <div class="stat-info">
+                  <div class="stat-value">{{ stats.deletedDocs.toLocaleString() }}</div>
+                  <div class="stat-label">已删除文档</div>
+               </div>
             </div>
           </el-card>
-        </el-col>
-      </el-row>
-    </div>
+       </el-col>
+    </el-row>
 
-    <el-card class="table-card">
-      <el-table
+    <!-- Table Content -->
+    <el-card class="content-card">
+       <el-table
         :data="filteredIndices"
         v-loading="loading"
-        stripe
         style="width: 100%"
         @selection-change="handleSelectionChange"
       >
@@ -93,16 +86,16 @@
         <el-table-column prop="index" label="索引名称" min-width="200">
           <template #default="{ row }">
             <div class="index-name">
-              <el-tag :type="getStatusType(row.status)" size="small">
+              <el-tag :type="getStatusType(row.status)" size="small" effect="plain" class="mr-2">
                 {{ row.status }}
               </el-tag>
-              <span style="margin-left: 10px">{{ row.name }}</span>
+              <span class="font-medium">{{ row.name }}</span>
             </div>
           </template>
         </el-table-column>
         <el-table-column prop="health" label="健康状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="getHealthType(row.health)" size="small">
+            <el-tag :type="getHealthType(row.health)" size="small" effect="dark">
               {{ row.health }}
             </el-tag>
           </template>
@@ -134,140 +127,92 @@
         </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
-            <el-button
-              type="primary"
-              size="small"
-              link
-              @click="viewDetails(row)"
-            >
-              详情
-            </el-button>
-            <el-button
-              type="warning"
-              size="small"
-              link
-              @click="optimizeIndex(row)"
-            >
-              优化
-            </el-button>
-            <el-button
-              type="danger"
-              size="small"
-              link
-              @click="deleteIndex(row)"
-            >
-              删除
-            </el-button>
+            <el-button type="primary" link size="small" @click="viewDetails(row)">详情</el-button>
+            <el-button type="warning" link size="small" @click="optimizeIndex(row)">优化</el-button>
+            <el-button type="danger" link size="small" @click="deleteIndex(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
 
-      <div class="batch-actions" v-if="selectedIndices.length > 0">
+      <div class="batch-actions mt-4 p-4 bg-gray-50 rounded" v-if="selectedIndices.length > 0">
         <el-button type="danger" @click="batchDelete">
-          批量删除 ({{ selectedIndices.length }})
+           <el-icon class="mr-1"><Delete /></el-icon> 批量删除 ({{ selectedIndices.length }})
         </el-button>
         <el-button type="warning" @click="batchOptimize">
-          批量优化 ({{ selectedIndices.length }})
+           <el-icon class="mr-1"><MagicStick /></el-icon> 批量优化 ({{ selectedIndices.length }})
         </el-button>
       </div>
     </el-card>
 
-    <!-- 创建索引对话框 -->
-    <el-dialog
-      v-model="showCreateDialog"
-      title="创建索引"
-      width="50%"
-    >
-      <el-form
-        ref="createFormRef"
-        :model="createForm"
-        :rules="createRules"
-        label-width="100px"
-      >
-        <el-form-item label="索引名称" prop="name">
-          <el-input v-model="createForm.name" placeholder="请输入索引名称" />
-        </el-form-item>
-        <el-form-item label="主分片数" prop="primaryShards">
-          <el-input-number v-model="createForm.primaryShards" :min="1" :max="100" />
-        </el-form-item>
-        <el-form-item label="副本分片数" prop="replicaShards">
-          <el-input-number v-model="createForm.replicaShards" :min="0" :max="10" />
-        </el-form-item>
-        <el-form-item label="刷新间隔">
-          <el-input v-model="createForm.refreshInterval" placeholder="如: 1s" />
-        </el-form-item>
-        <el-form-item label="别名">
-          <el-input v-model="createForm.alias" placeholder="可选的索引别名" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="showCreateDialog = false">取消</el-button>
-        <el-button type="primary" @click="createIndex" :loading="createLoading">
-          创建
-        </el-button>
-      </template>
+    <!-- Dialogs -->
+    <el-dialog v-model="showCreateDialog" title="创建索引" width="500px">
+       <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-position="top">
+          <el-form-item label="索引名称" prop="name">
+             <el-input v-model="createForm.name" placeholder="请输入索引名称" />
+          </el-form-item>
+          <el-row :gutter="20">
+             <el-col :span="12">
+                <el-form-item label="主分片数" prop="primaryShards">
+                   <el-input-number v-model="createForm.primaryShards" :min="1" :max="100" class="w-full" />
+                </el-form-item>
+             </el-col>
+             <el-col :span="12">
+                <el-form-item label="副本分片数" prop="replicaShards">
+                   <el-input-number v-model="createForm.replicaShards" :min="0" :max="10" class="w-full" />
+                </el-form-item>
+             </el-col>
+          </el-row>
+          <el-form-item label="刷新间隔">
+             <el-input v-model="createForm.refreshInterval" placeholder="如: 1s" />
+          </el-form-item>
+          <el-form-item label="别名">
+             <el-input v-model="createForm.alias" placeholder="可选的索引别名" />
+          </el-form-item>
+       </el-form>
+       <template #footer>
+          <el-button @click="showCreateDialog = false">取消</el-button>
+          <el-button type="primary" @click="createIndex" :loading="createLoading">创建</el-button>
+       </template>
     </el-dialog>
 
-    <!-- 索引详情对话框 -->
-    <el-dialog
-      v-model="detailDialogVisible"
-      title="索引详情"
-      width="70%"
-    >
-      <div v-if="currentIndex" class="index-details">
-        <el-descriptions :column="2" border>
-          <el-descriptions-item label="索引名称">{{ currentIndex.name }}</el-descriptions-item>
-          <el-descriptions-item label="状态">
-            <el-tag :type="getStatusType(currentIndex.status)">{{ currentIndex.status }}</el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="健康状态">
-            <el-tag :type="getHealthType(currentIndex.health)">{{ currentIndex.health }}</el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="UUID">{{ currentIndex.uuid }}</el-descriptions-item>
-          <el-descriptions-item label="文档数">{{ currentIndex.docsCount.toLocaleString() }}</el-descriptions-item>
-          <el-descriptions-item label="已删除文档">{{ currentIndex.deletedDocs.toLocaleString() }}</el-descriptions-item>
-          <el-descriptions-item label="存储大小">{{ formatBytes(currentIndex.storeSize) }}</el-descriptions-item>
-          <el-descriptions-item label="主分片数">{{ currentIndex.primaryShards }}</el-descriptions-item>
-          <el-descriptions-item label="副本分片数">{{ currentIndex.replicaShards }}</el-descriptions-item>
-          <el-descriptions-item label="刷新间隔">{{ currentIndex.refreshInterval || '1s' }}</el-descriptions-item>
-        </el-descriptions>
+    <el-dialog v-model="detailDialogVisible" title="索引详情" width="800px">
+       <div v-if="currentIndex" class="index-details">
+          <el-descriptions :column="2" border>
+             <el-descriptions-item label="索引名称">{{ currentIndex.name }}</el-descriptions-item>
+             <el-descriptions-item label="状态">
+                <el-tag :type="getStatusType(currentIndex.status)">{{ currentIndex.status }}</el-tag>
+             </el-descriptions-item>
+             <el-descriptions-item label="健康状态">
+                <el-tag :type="getHealthType(currentIndex.health)">{{ currentIndex.health }}</el-tag>
+             </el-descriptions-item>
+             <el-descriptions-item label="UUID">{{ currentIndex.uuid }}</el-descriptions-item>
+             <el-descriptions-item label="文档数">{{ currentIndex.docsCount.toLocaleString() }}</el-descriptions-item>
+             <el-descriptions-item label="已删除文档">{{ currentIndex.deletedDocs.toLocaleString() }}</el-descriptions-item>
+             <el-descriptions-item label="存储大小">{{ formatBytes(currentIndex.storeSize) }}</el-descriptions-item>
+             <el-descriptions-item label="主/副分片">{{ currentIndex.primaryShards }} / {{ currentIndex.replicaShards }}</el-descriptions-item>
+          </el-descriptions>
 
-        <div class="detail-tabs" style="margin-top: 20px">
-          <el-tabs v-model="activeDetailTab">
-            <el-tab-pane label="映射配置" name="mapping">
-              <el-input
-                v-model="currentIndex.mapping"
-                type="textarea"
-                :rows="10"
-                readonly
-                style="font-family: 'Courier New', monospace"
-              />
-            </el-tab-pane>
-            <el-tab-pane label="索引设置" name="settings" v-if="currentIndex.settings">
-              <el-input
-                v-model="currentIndex.settings"
-                type="textarea"
-                :rows="10"
-                readonly
-                style="font-family: 'Courier New', monospace"
-              />
-            </el-tab-pane>
+          <el-tabs v-model="activeDetailTab" class="mt-4">
+             <el-tab-pane label="映射配置" name="mapping">
+                <el-input
+                  v-model="currentIndex.mapping"
+                  type="textarea"
+                  :rows="12"
+                  readonly
+                  class="code-editor"
+                />
+             </el-tab-pane>
+             <el-tab-pane label="索引设置" name="settings" v-if="currentIndex.settings">
+                <el-input
+                  v-model="currentIndex.settings"
+                  type="textarea"
+                  :rows="12"
+                  readonly
+                  class="code-editor"
+                />
+             </el-tab-pane>
           </el-tabs>
-        </div>
-
-        <div class="mapping-section" style="margin-top: 20px">
-          <h4>映射配置</h4>
-          <el-input
-            v-model="currentIndex.mapping"
-            type="textarea"
-            :rows="10"
-            readonly
-          />
-        </div>
-      </div>
-      <template #footer>
-        <el-button @click="detailDialogVisible = false">关闭</el-button>
-      </template>
+       </div>
     </el-dialog>
   </div>
 </template>
@@ -275,7 +220,10 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Refresh, Plus, DocumentCopy, Files, Tickets, Delete } from '@element-plus/icons-vue'
+import { 
+  Search, Refresh, Plus, DocumentCopy, Files, Tickets, Delete, 
+  Collection, MagicStick 
+} from '@element-plus/icons-vue'
 import { 
   getIndices, 
   createIndex as createIndexAPI, 
@@ -688,83 +636,32 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.index-management {
-  padding: 20px;
-  height: calc(100vh - 40px);
-  overflow: hidden;
+.header-icon-wrapper {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: var(--primary-color);
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: white;
 }
+
+.mr-2 { margin-right: 8px; }
+.mr-1 { margin-right: 4px; }
+.mt-4 { margin-top: 16px; }
+.w-64 { width: 16rem; }
+.w-full { width: 100%; }
 
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  flex-shrink: 0;
 }
-
-.page-header h2 {
-  margin: 0;
-  color: #303133;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-}
-
-.stats-cards {
-  margin-bottom: 20px;
-  flex-shrink: 0;
-}
-
-.stat-card {
-  height: 100px;
-}
-
-.stat-content {
-  display: flex;
-  align-items: center;
-  height: 100%;
-}
-
-.stat-icon {
-  font-size: 40px;
-  margin-right: 15px;
-}
-
-.stat-info {
-  flex: 1;
-}
-
-.stat-value {
-  font-size: 24px;
-  font-weight: bold;
-  color: #303133;
-  line-height: 1;
-}
-
-.stat-label {
-  font-size: 14px;
-  color: #909399;
-  margin-top: 5px;
-}
-
-.table-card {
-  margin-bottom: 20px;
-  flex: 1;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.table-card :deep(.el-card__body) {
-  flex: 1;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
+.header-left { display: flex; align-items: center; gap: 12px; }
+.header-title-wrapper h2 { margin: 0; font-size: 18px; color: var(--text-main); }
+.header-title-wrapper .subtitle { margin: 0; font-size: 12px; color: var(--text-sub); }
+.header-right { display: flex; align-items: center; gap: 12px; }
 
 .index-name {
   display: flex;
@@ -772,33 +669,14 @@ onMounted(() => {
 }
 
 .batch-actions {
-  margin-top: 20px;
-  padding: 15px;
-  background-color: #f5f7fa;
-  border-radius: 4px;
-  flex-shrink: 0;
+  display: flex;
+  gap: 12px;
 }
 
-.index-details {
-  padding: 20px 0;
-}
-
-.mapping-section h4 {
-  margin-bottom: 10px;
-  color: #303133;
-}
-
-/* 表格滚动优化 */
-.table-card :deep(.el-table) {
-  flex: 1;
-  overflow: auto;
-}
-
-.table-card :deep(.el-table__body-wrapper) {
-  overflow-y: auto !important;
-}
-
-.table-card :deep(.el-table__header-wrapper) {
-  overflow: hidden;
+.code-editor :deep(.el-textarea__inner) {
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 12px;
+  background-color: #f8f9fa;
+  color: #333;
 }
 </style>

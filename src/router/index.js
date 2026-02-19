@@ -250,6 +250,66 @@ const dashboardRoutes = [
       instanceType: 'kubernetes'
     }
   },
+  {
+    path: 'k8s/replicaset',
+    name: 'ReplicaSetManagement',
+    component: () => import('../views/k8s/ReplicaSetManagement.vue'),
+    meta: {
+      title: 'ReplicaSet管理',
+      icon: 'CopyDocument',
+      instanceType: 'kubernetes'
+    }
+  },
+  {
+    path: 'k8s/rc',
+    name: 'ReplicationControllerManagement',
+    component: () => import('../views/k8s/ReplicationControllerManagement.vue'),
+    meta: {
+      title: 'RC管理',
+      icon: 'CopyDocument',
+      instanceType: 'kubernetes'
+    }
+  },
+  {
+    path: 'k8s/crd',
+    name: 'CrdManagement',
+    component: () => import('../views/k8s/CrdManagement.vue'),
+    meta: {
+      title: 'CRD管理',
+      icon: 'Cpu',
+      instanceType: 'kubernetes'
+    }
+  },
+  {
+    path: 'k8s/vpa',
+    name: 'VpaManagement',
+    component: () => import('../views/k8s/VpaManagement.vue'),
+    meta: {
+      title: 'VPA管理',
+      icon: 'Top',
+      instanceType: 'kubernetes'
+    }
+  },
+  {
+    path: 'k8s/hpa',
+    name: 'HpaManagement',
+    component: () => import('../views/k8s/HpaManagement.vue'),
+    meta: {
+      title: 'HPA管理',
+      icon: 'Right',
+      instanceType: 'kubernetes'
+    }
+  },
+  {
+    path: 'k8s/operator',
+    name: 'OperatorManagement',
+    component: () => import('../views/k8s/OperatorManagement.vue'),
+    meta: {
+      title: 'Operator管理',
+      icon: 'Box',
+      instanceType: 'kubernetes'
+    }
+  },
   // Helm 应用商店
   {
     path: 'helm/repos',

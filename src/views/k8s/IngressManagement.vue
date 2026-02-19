@@ -9,7 +9,7 @@
         <div class="header-actions">
           <div class="namespace-selector">
             <span class="selector-label">命名空间：</span>
-            <el-select v-model="selectedNamespace" placeholder="选择命名空间" @change="fetchData" style="width: 200px;" class="cyber-select">
+            <el-select v-model="selectedNamespace" placeholder="选择命名空间" @change="fetchData" style="width: 200px;" class="autoops-select">
               <el-option label="所有" value="all" />
               <el-option
                 v-for="ns in namespaceList"
@@ -19,7 +19,7 @@
               />
             </el-select>
           </div>
-          <el-button type="primary" class="cyber-button" @click="showCreateDialog = true">
+          <el-button type="primary" class="autoops-btn-primary" @click="showCreateDialog = true">
             <el-icon><Plus /></el-icon>
             创建 Ingress
           </el-button>
@@ -28,10 +28,10 @@
     </el-card>
 
     <el-card class="content-card cyber-card">
-      <div class="table-container">
+      <div class="autoops-table-wrapper">
         <el-table 
           :data="ingressList" 
-          style="width: 100%" 
+          style="width: 100%" class="autoops-table" 
           v-loading="loading"
           element-loading-background="rgba(0, 0, 0, 0.5)"
           height="calc(100vh - 280px)"

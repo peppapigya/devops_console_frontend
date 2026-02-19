@@ -7,7 +7,7 @@
           <p>查看和管理 Kubernetes Storage Classes</p>
         </div>
         <div class="header-actions">
-           <el-button type="primary" class="cyber-button" @click="showCreateDialog = true">
+           <el-button type="primary" class="autoops-btn-primary" @click="showCreateDialog = true">
             <el-icon><Plus /></el-icon>
             创建 StorageClass
           </el-button>
@@ -16,10 +16,10 @@
     </el-card>
 
     <el-card class="content-card cyber-card">
-      <div class="table-container">
+      <div class="autoops-table-wrapper">
         <el-table 
           :data="scList" 
-          style="width: 100%" 
+          style="width: 100%" class="autoops-table" 
           v-loading="loading"
           element-loading-background="rgba(0, 0, 0, 0.5)"
           height="calc(100vh - 280px)"

@@ -1,116 +1,132 @@
 <template>
-  <div class="helm-app-store">
-    <el-card class="page-header-card cyber-card">
-      <div class="page-header cyber-header">
-        <div>
-          <h2>Helm 应用商店</h2>
-          <p>浏览和安装 Helm Charts</p>
-        </div>
-        <div class="header-actions">
-          <el-select v-model="selectedRepo" placeholder="选择仓库" @change="fetchCharts" style="width: 200px; margin-right: 12px;" class="cyber-select">
-            <el-option label="全部仓库" :value="0" />
-            <el-option
-              v-for="repo in repoList"
-              :key="repo.id"
-              :label="repo.name"
-              :value="repo.id"
-            />
-          </el-select>
-          <el-input
-            v-model="searchKeyword"
-            placeholder="搜索应用..."
-            style="width: 300px;"
-            clearable
-            @input="handleSearch"
-          >
-            <template #prefix>
-              <el-icon><Search /></el-icon>
-            </template>
-          </el-input>
-        </div>
-      </div>
+  <div class="page-container">
+    <el-card class="page-header-card">
+       <div class="page-header">
+         <div class="header-left">
+           <div class="header-icon-wrapper">
+             <el-icon :size="24"><Shop /></el-icon>
+           </div>
+           <div class="header-title-wrapper">
+             <h2>应用商店</h2>
+             <p class="subtitle">浏览和安装 Helm Charts</p>
+           </div>
+         </div>
+       </div>
     </el-card>
 
-    <el-card class="content-card cyber-card">
-      <div v-loading="loading" class="charts-container">
-        <div v-if="chartList.length === 0 && !loading" class="empty-state">
-          <el-empty description="暂无应用">
-            <el-button type="primary" @click="$router.push('/helm/repos')">前往添加仓库</el-button>
+    <el-card class="content-card">
+       <div class="filter-row flex gap-4 mb-6">
+           <el-select v-model="selectedRepo" placeholder="选择仓库" @change="fetchCharts" class="w-56">
+             <el-option label="全部仓库" :value="0" />
+             <el-option
+               v-for="repo in repoList"
+               :key="repo.id"
+               :label="repo.name"
+               :value="repo.id"
+             />
+           </el-select>
+           <el-input
+             v-model="searchKeyword"
+             placeholder="搜索应用..."
+             class="w-80"
+             clearable
+             @input="handleSearch"
+             :prefix-icon="Search"
+           />
+       </div>
+
+       <div v-loading="loading" class="charts-container min-h-[400px]">
+          <el-empty v-if="chartList.length === 0 && !loading" description="暂无应用">
+             <el-button type="primary" @click="$router.push('/helm/repos')">前往添加仓库</el-button>
           </el-empty>
-        </div>
 
-        <div v-else class="charts-grid">
-          <div
-            v-for="chart in chartList"
-            :key="chart.id"
-            class="chart-card"
-            @click="handleChartClick(chart)"
-          >
-            <div class="chart-icon">
-              <img v-if="chart.icon" :src="chart.icon" :alt="chart.name" @error="handleImageError" />
-              <el-icon v-else class="default-icon"><Box /></el-icon>
-            </div>
-            <div class="chart-info">
-              <h3 class="chart-name">{{ chart.name }}</h3>
-              <p class="chart-description">{{ chart.description || '暂无描述' }}</p>
-              <div class="chart-meta">
-                <el-tag size="small" effect="plain">{{ chart.repo_name }}</el-tag>
+          <div v-else class="charts-grid">
+              <div
+                v-for="chart in chartList"
+                :key="chart.id"
+                class="chart-card-item"
+                @click="handleChartClick(chart)"
+              >
+                  <div class="flex items-start justify-between mb-3">
+                     <div class="chart-icon-box">
+                        <img v-if="chart.icon" :src="chart.icon" :alt="chart.name" @error="handleImageError" />
+                        <el-icon v-else><Box /></el-icon>
+                     </div>
+                     <el-tag size="small" effect="plain">{{ chart.repo_name }}</el-tag>
+                  </div>
+                  <div>
+                      <h3 class="chart-name" :title="chart.name">{{ chart.name }}</h3>
+                      <p class="chart-desc">{{ chart.description || '暂无描述' }}</p>
+                  </div>
+                  <div class="chart-footer">
+                      <span class="version-tag">v{{ chart.version }}</span>
+                      <el-button type="primary" link size="small">安装</el-button>
+                  </div>
               </div>
-            </div>
           </div>
-        </div>
 
-        <!-- 分页 -->
-        <div v-if="total > 0" class="pagination-container">
-          <el-pagination
-            v-model:current-page="currentPage"
-            v-model:page-size="pageSize"
-            :total="total"
-            :page-sizes="[12, 24, 48, 96]"
-            layout="total, sizes, prev, pager, next, jumper"
-            @current-change="fetchCharts"
-            @size-change="handleSizeChange"
-          />
-        </div>
-      </div>
+          <!-- Pagination -->
+          <div v-if="total > 0" class="flex justify-center mt-8">
+            <el-pagination
+              v-model:current-page="currentPage"
+              v-model:page-size="pageSize"
+              :total="total"
+              :page-sizes="[12, 24, 48, 96]"
+              layout="total, sizes, prev, pager, next, jumper"
+              @current-change="fetchCharts"
+              @size-change="handleSizeChange"
+            />
+          </div>
+       </div>
     </el-card>
 
-    <!-- 安装对话框 -->
+    <!-- Install Dialog -->
     <el-dialog
       v-model="showInstallDialog"
       title="安装 Helm Chart"
       width="700px"
-      :close-on-click-modal="false"
+      destroy-on-close
+      @opened="handleDialogOpened"
     >
-      <el-form :model="installForm" ref="installFormRef" label-width="120px" @submit.prevent>
-        <el-form-item label="Release 名称" prop="release_name" required>
-          <el-input v-model="installForm.release_name" placeholder="例如：my-app" />
-        </el-form-item>
-        <el-form-item label="命名空间" prop="namespace" required>
-          <el-input v-model="installForm.namespace" placeholder="default" />
-        </el-form-item>
-        <el-form-item label="Chart 版本">
-          <el-select v-model="installForm.chart_version" placeholder="选择版本" style="width: 100%;">
-            <el-option
-              v-for="version in chartVersions"
-              :key="version.version"
-              :label="`${version.version} (App: ${version.app_version || 'N/A'})`"
-              :value="version.version"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="自定义 Values">
-          <div style="display: flex; justify-content: flex-end; margin-bottom: 8px;">
-            <el-button size="small" @click="loadDefaultValues">加载官方示例</el-button>
-          </div>
-          <el-input
-            v-model="customValues"
-            type="textarea"
-            :rows="10"
-            placeholder='输入 YAML 格式的 values，例如：&#10;service:&#10;  type: LoadBalancer&#10;  port: 80&#10;&#10;replicaCount: 2'
-            class="values-textarea"
-          />
-        </el-form-item>
+      <el-form :model="installForm" ref="installFormRef" label-position="top" @submit.prevent>
+         <el-row :gutter="20">
+             <el-col :span="12">
+                <el-form-item label="Release 名称" prop="release_name" required>
+                   <el-input v-model="installForm.release_name" placeholder="例如：my-app" />
+                </el-form-item>
+             </el-col>
+             <el-col :span="12">
+                <el-form-item label="命名空间" prop="namespace" required>
+                   <el-input v-model="installForm.namespace" placeholder="default" />
+                </el-form-item>
+             </el-col>
+             <el-col :span="24">
+                <el-form-item label="Chart 版本">
+                   <el-select v-model="installForm.chart_version" placeholder="选择版本" class="w-full">
+                      <el-option
+                        v-for="version in chartVersions"
+                        :key="version.version"
+                        :label="`${version.version} (App: ${version.app_version || 'N/A'})`"
+                        :value="version.version"
+                      />
+                   </el-select>
+                </el-form-item>
+             </el-col>
+             <el-col :span="24">
+                <el-form-item label="自定义 Values">
+                   <div class="flex justify-end mb-2 w-full">
+                      <el-button size="small" @click="loadDefaultValues" link type="primary">加载官方示例</el-button>
+                   </div>
+                   <el-input
+                     v-model="customValues"
+                     type="textarea"
+                     :rows="12"
+                     placeholder="输入 YAML 格式的 values"
+                     class="values-textarea"
+                   />
+                </el-form-item>
+             </el-col>
+         </el-row>
       </el-form>
       <template #footer>
         <span class="dialog-footer">
@@ -125,12 +141,10 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Search, Box } from '@element-plus/icons-vue'
+import { Search, Box, Shop } from '@element-plus/icons-vue'
 import { getHelmRepos } from '@/api/helm'
-import { getHelmCharts, getChartVersions, installHelmChart } from '@/api/helm'
+import { getHelmCharts, getChartVersions, installHelmChart, getChartDefaultValues } from '@/api/helm'
 import { getSelectedInstanceId } from '@/stores/instanceStore'
-
-import { getChartDefaultValues } from '@/api/helm'
 
 const loading = ref(false)
 const installing = ref(false)
@@ -151,10 +165,12 @@ const installForm = ref({
   chart_version: '',
   chart_name: '',
   repo_name: '',
+  chart_url: '',
   instance_id: 0
 })
 
 const customValues = ref('')
+const installFormRef = ref()
 
 // 获取仓库列表
 const fetchRepos = async () => {
@@ -174,12 +190,8 @@ const fetchCharts = async () => {
       page: currentPage.value,
       page_size: pageSize.value
     }
-    if (selectedRepo.value) {
-      params.repo_id = selectedRepo.value
-    }
-    if (searchKeyword.value) {
-      params.keyword = searchKeyword.value
-    }
+    if (selectedRepo.value) params.repo_id = selectedRepo.value
+    if (searchKeyword.value) params.keyword = searchKeyword.value
 
     const res = await getHelmCharts(params)
     chartList.value = res.data.data.chartList || []
@@ -247,13 +259,13 @@ const handleChartClick = async (chart) => {
     chart_version: chart.version,
     chart_name: chart.name,
     repo_name: chart.repo_name,
-    instance_id: getSelectedInstanceId()
+    instance_id: getSelectedInstanceId(),
+    chart_url: chart.chart_url
   }
   customValues.value = ''
   showInstallDialog.value = true
 }
 
-// 安装 Chart
 const handleInstall = async () => {
   const instanceId = getSelectedInstanceId()
   if (!instanceId) {
@@ -263,14 +275,9 @@ const handleInstall = async () => {
 
   installing.value = true
   try {
-    const data = {
-      ...installForm.value
-    }
-
-  
-    // 直接传递 YAML 字符串给后端
+    const data = { ...installForm.value }
     if (customValues.value.trim()) {
-      data.values_yaml = customValues.value
+      data.values = customValues.value
     }
 
     await installHelmChart(data, instanceId)
@@ -286,6 +293,11 @@ const handleInstall = async () => {
 
 const handleImageError = (e) => {
   e.target.style.display = 'none'
+  // Show fallback icon logic handled in template by adjacent el-icon
+}
+
+const handleDialogOpened = () => {
+    // any dialog open logic
 }
 
 onMounted(() => {
@@ -295,258 +307,125 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.helm-app-store {
-  padding: 20px;
-  min-height: calc(100vh - 60px);
+.header-icon-wrapper {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: var(--primary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
 }
 
-/* Cyber Card 样式 */
-.cyber-card {
-  background: linear-gradient(135deg, rgba(10, 15, 30, 0.95) 0%, rgba(15, 25, 45, 0.9) 100%);
-  border: 1px solid rgba(64, 158, 255, 0.3);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3),
-              0 0 20px rgba(64, 158, 255, 0.1);
-  backdrop-filter: blur(10px);
-  transition: all 0.3s ease;
-}
-
-.cyber-card:hover {
-  border-color: rgba(64, 158, 255, 0.5);
-  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4),
-              0 0 30px rgba(64, 158, 255, 0.2);
-}
-
-.page-header-card {
-  margin-bottom: 20px;
-}
+.w-56 { width: 14rem; }
+.w-80 { width: 20rem; }
+.w-full { width: 100%; }
+.flex { display: flex; }
+.gap-4 { gap: 16px; }
+.mb-6 { margin-bottom: 24px; }
+.mb-3 { margin-bottom: 12px; }
+.mb-2 { margin-bottom: 8px; }
+.mb-1 { margin-bottom: 4px; }
+.mr-2 { margin-right: 8px; }
+.items-center { align-items: center; }
+.items-start { align-items: flex-start; }
+.justify-between { justify-content: space-between; }
+.justify-center { justify-content: center; }
+.justify-end { justify-content: flex-end; }
+.mt-8 { margin-top: 32px; }
+.min-h-\[400px\] { min-height: 400px; }
 
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
-
-.page-header h2 {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  background: linear-gradient(135deg, #409EFF 0%, #67C23A 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.page-header p {
-  margin: 4px 0 0 0;
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.header-actions {
-  display: flex;
-  gap: 12px;
-}
-
-/* Charts Grid */
-.charts-container {
-  min-height: 400px;
-}
+.header-left { display: flex; align-items: center; gap: 12px; }
+.header-title-wrapper h2 { margin: 0; font-size: 18px; color: var(--text-main); }
+.header-title-wrapper .subtitle { margin: 0; font-size: 12px; color: var(--text-sub); }
 
 .charts-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 20px;
-  margin-bottom: 24px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 24px;
 }
 
-.chart-card {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(64, 158, 255, 0.2);
-  border-radius: 8px;
-  padding: 20px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.chart-card-item {
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
-.chart-card:hover {
-  background: rgba(64, 158, 255, 0.08);
-  border-color: rgba(64, 158, 255, 0.5);
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(64, 158, 255, 0.2);
+.chart-card-item:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-4px);
+    border-color: var(--primary-color-light);
 }
 
-.chart-icon {
-  width: 64px;
-  height: 64px;
-  border-radius: 8px;
-  background: rgba(64, 158, 255, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
+.chart-icon-box {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    background: #f5f7fa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    color: var(--primary-color);
+    font-size: 24px;
 }
 
-.chart-icon img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-.chart-icon .default-icon {
-  font-size: 32px;
-  color: rgba(64, 158, 255, 0.6);
-}
-
-.chart-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.chart-icon-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
 }
 
 .chart-name {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;  /* ← 深色文字 */
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+    margin: 0 0 4px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.chart-description {
-  margin: 0;
-  font-size: 13px;
-  color: #606266;  /* ← 深灰色文字 */
-  line-height: 1.4;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  line-clamp: 2;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  min-height: 2.8em;
+.chart-desc {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-sub);
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    height: 40px; 
 }
 
-.chart-meta {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+.chart-footer {
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid #f0f0f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
-/* Empty State */
-.empty-state {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 400px;
+.version-tag {
+    font-size: 12px;
+    color: var(--text-placeholder);
 }
 
-/* Pagination */
-.pagination-container {
-  display: flex;
-  justify-content: center;
-  margin-top: 24px;
-}
-
-:deep(.el-pagination) {
-  --el-pagination-bg-color: transparent;
-  --el-pagination-button-bg-color: rgba(255, 255, 255, 0.05);
-  --el-pagination-hover-color: #409EFF;
-}
-
-:deep(.el-pagination button),
-:deep(.el-pager li) {
-  background: rgba(255, 255, 255, 0.05);
-  color: #606266;
-  border: 1px solid rgba(64, 158, 255, 0.2);
-}
-
-:deep(.el-pagination button:hover),
-:deep(.el-pager li:hover) {
-  background: rgba(64, 158, 255, 0.2);
-  color: #409EFF;
-}
-
-:deep(.el-pager li.is-active) {
-  background: linear-gradient(135deg, #409EFF 0%, #67C23A 100%);
-  color: white;
-  border-color: transparent;
-}
-/* 对话框内输入框使用浅色文字 */
-:deep(.el-dialog .el-input__inner),
-:deep(.el-dialog .el-textarea__inner) {
-  color: rgba(255, 255, 255, 0.9) !important;
-}
-
-:deep(.el-dialog .el-select__selected-item) {
-  color: rgba(255, 255, 255, 0.9) !important;
-}
-
-/* Values 文本域等宽字体 */
 .values-textarea :deep(.el-textarea__inner) {
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-/* Dialog */
-:deep(.el-dialog) {
-  background: linear-gradient(135deg, rgba(10, 15, 30, 0.98) 0%, rgba(15, 25, 45, 0.95) 100%);
-  border: 1px solid rgba(64, 158, 255, 0.3);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-}
-
-:deep(.el-dialog__header) {
-  border-bottom: 1px solid rgba(64, 158, 255, 0.2);
-}
-
-:deep(.el-dialog__title) {
-  color: rgba(255, 255, 255, 0.9);
-  font-weight: 600;
-}
-
-:deep(.el-form-item__label) {
-  color: rgba(255, 255, 255, 0.8);
-}
-
-:deep(.el-input__wrapper),
-:deep(.el-textarea__inner) {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(64, 158, 255, 0.3);
-  box-shadow: none;
-}
-
-:deep(.el-input__inner),
-:deep(.el-textarea__inner) {
-  color: #303133;
-}
-
-:deep(.el-input__wrapper:hover),
-:deep(.el-textarea__inner:hover) {
-  border-color: rgba(64, 158, 255, 0.5);
-}
-
-:deep(.el-input__wrapper.is-focus),
-:deep(.el-textarea__inner:focus) {
-  border-color: #409EFF;
-  box-shadow: 0 0 10px rgba(64, 158, 255, 0.3);
-}
-
-:deep(.el-select__wrapper) {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(64, 158, 255, 0.3);
-  box-shadow: none;
-}
-
-:deep(.el-select__selected-item) {
-  color: #303133;
-}
-
-:deep(.el-select__wrapper:hover) {
-  border-color: rgba(64, 158, 255, 0.5);
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 13px;
 }
 </style>

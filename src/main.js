@@ -5,7 +5,8 @@ import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import './style.css'
 import './styles/global.css'
 import './styles/enhancements.css'
-import './style/cyberpunk.css'
+import './styles/page-layout.css'
+import './style/autoops.css' // AutoOps 清新主题
 import App from './App.vue'
 import router from './router'
 

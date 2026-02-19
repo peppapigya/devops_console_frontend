@@ -1,164 +1,168 @@
 <template>
-  <div class="es-dashboard" v-loading="loading">
-    <!-- 页面标题 -->
-    <div class="page-title">
-      <div class="title-header">
-        <h1>Elasticsearch 控制台</h1>
-      </div>
-    </div>
+  <div class="page-container" v-loading="loading">
+    <!-- Page Header -->
+    <el-card class="page-header-card">
+       <div class="page-header">
+         <div class="header-left">
+           <div class="header-icon-wrapper">
+             <el-icon :size="24"><Search /></el-icon>
+           </div>
+           <div class="header-title-wrapper">
+             <h2>Elasticsearch 控制台</h2>
+             <p class="subtitle">集群监控与数据管理</p>
+           </div>
+         </div>
+         <div class="header-right">
+           <el-button @click="refreshData">
+              <el-icon><Refresh /></el-icon> 刷新
+           </el-button>
+         </div>
+       </div>
+    </el-card>
 
-    <!-- 统计卡片区域 -->
-    <div class="stats-section">
-      <el-row :gutter="20">
-        <el-col :span="6">
-          <div class="stat-card">
-            <div class="stat-icon green">
-              <el-icon size="24"><CircleCheck /></el-icon>
-            </div>
+    <!-- Stats Section -->
+    <el-row :gutter="20" class="mb-20">
+       <el-col :span="6">
+          <el-card class="stat-card" shadow="hover">
             <div class="stat-content">
-              <div class="stat-number">{{ stats.activeNodes }}</div>
-              <div class="stat-label">活跃节点</div>
+               <div class="stat-icon bg-gradient-green"><el-icon><CircleCheck /></el-icon></div>
+               <div class="stat-info">
+                  <div class="stat-value">{{ stats.activeNodes }}</div>
+                  <div class="stat-label">活跃节点</div>
+               </div>
             </div>
-          </div>
-        </el-col>
-        <el-col :span="6">
-          <div class="stat-card">
-            <div class="stat-icon blue">
-              <el-icon size="24"><DocumentCopy /></el-icon>
-            </div>
+          </el-card>
+       </el-col>
+       <el-col :span="6">
+          <el-card class="stat-card" shadow="hover">
             <div class="stat-content">
-              <div class="stat-number">{{ stats.totalIndices }}</div>
-              <div class="stat-label">索引总数</div>
+               <div class="stat-icon bg-gradient-blue"><el-icon><DocumentCopy /></el-icon></div>
+               <div class="stat-info">
+                  <div class="stat-value">{{ stats.totalIndices }}</div>
+                  <div class="stat-label">索引总数</div>
+               </div>
             </div>
-          </div>
-        </el-col>
-        <el-col :span="6">
-          <div class="stat-card">
-            <div class="stat-icon orange">
-              <el-icon size="24"><Grid /></el-icon>
-            </div>
+          </el-card>
+       </el-col>
+       <el-col :span="6">
+          <el-card class="stat-card" shadow="hover">
             <div class="stat-content">
-              <div class="stat-number">{{ stats.totalShards }}</div>
-              <div class="stat-label">分片总数</div>
+               <div class="stat-icon bg-gradient-orange"><el-icon><Grid /></el-icon></div>
+               <div class="stat-info">
+                  <div class="stat-value">{{ stats.totalShards }}</div>
+                  <div class="stat-label">分片总数</div>
+               </div>
             </div>
-          </div>
-        </el-col>
-        <el-col :span="6">
-          <div class="stat-card">
-            <div class="stat-icon purple">
-              <el-icon size="24"><Monitor /></el-icon>
-            </div>
+          </el-card>
+       </el-col>
+       <el-col :span="6">
+          <el-card class="stat-card" shadow="hover">
             <div class="stat-content">
-              <div class="stat-number">{{ stats.totalDocs }}</div>
-              <div class="stat-label">文档总数</div>
+               <div class="stat-icon bg-gradient-purple"><el-icon><Monitor /></el-icon></div>
+               <div class="stat-info">
+                  <div class="stat-value">{{ stats.totalDocs }}</div>
+                  <div class="stat-label">文档总数</div>
+               </div>
             </div>
-          </div>
-        </el-col>
-      </el-row>
-    </div>
+          </el-card>
+       </el-col>
+    </el-row>
 
-    <!-- 主节点信息和集群健康状态 -->
-    <el-row :gutter="20" class="main-content">
-      <el-col :span="12">
-        <el-card class="info-card">
-          <template #header>
-            <div class="card-header">
-              <span>主节点信息</span>
-              <el-tag type="success" size="small">在线</el-tag>
-            </div>
-          </template>
-          <div class="info-list">
-            <div class="info-item">
-              <span class="info-label">节点名称:</span>
-              <span class="info-value">{{ masterNode.name || '未知' }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">集群UUID:</span>
-              <span class="info-value" style="font-size: 12px;">{{ clusterInfo.clusterUUID || '未知' }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">版本:</span>
-              <el-tooltip 
-                :content="getVersionDetails(clusterInfo.version)" 
-                placement="top" 
-                :disabled="!clusterInfo.version"
-              >
-                <span class="info-value version-info">
-                  {{ formatVersion(clusterInfo.version) || '未知' }}
-                  <el-icon class="version-icon" v-if="clusterInfo.version"><InfoFilled /></el-icon>
-                </span>
-              </el-tooltip>
-            </div>
-            <div class="info-item">
-              <span class="info-label">角色:</span>
-              <span class="info-value">master</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">状态:</span>
-              <el-tag :type="getClusterStatusType(clusterHealth.status)" size="small">
-                {{ clusterHealth.status?.toUpperCase() || '未知' }}
-              </el-tag>
-            </div>
-            <div class="info-item">
-              <span class="info-label">连接状态:</span>
-              <el-tag type="success" size="small">在线</el-tag>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      
-      <el-col :span="12">
-        <el-card class="info-card">
-          <template #header>
-            <div class="card-header">
-              <span>集群健康状态</span>
-              <el-tag :type="getClusterStatusType(clusterHealth.status)" size="small">
-                {{ clusterHealth.status?.toUpperCase() }}
-              </el-tag>
-            </div>
-          </template>
-          <div class="info-list">
-            <div class="info-item">
-              <span class="info-label">集群名称:</span>
-              <span class="info-value">{{ clusterInfo.name || '未知' }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">状态:</span>
-              <el-tag :type="getClusterStatusType(clusterHealth.status)" size="small">
-                {{ clusterHealth.status?.toUpperCase() || '未知' }}
-              </el-tag>
-            </div>
-            <div class="info-item">
-              <span class="info-label">节点总数:</span>
-              <span class="info-value">{{ clusterHealth.number_of_nodes || 0 }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">活跃主分片:</span>
-              <span class="info-value">{{ clusterHealth.active_primary_shards || 0 }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">活跃分片:</span>
-              <span class="info-value">{{ clusterHealth.active_shards || 0 }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">数据节点:</span>
-              <span class="info-value">{{ stats.activeNodes || 0 }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">总分片:</span>
-              <span class="info-value">{{ stats.totalShards || 0 }}</span>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
+    <!-- Main Content -->
+    <el-row :gutter="20" class="main-content-row">
+       <el-col :span="12">
+          <el-card class="content-card h-full">
+             <template #header>
+                <div class="flex-between">
+                   <div class="items-center flex gap-2">
+                      <el-icon><Tools /></el-icon> <span>主节点信息</span>
+                   </div>
+                   <el-tag type="success" size="small">在线</el-tag>
+                </div>
+             </template>
+             <div class="info-list">
+                <div class="info-item">
+                  <span class="info-label">节点名称:</span>
+                  <span class="info-value">{{ masterNode.name || '未知' }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">集群UUID:</span>
+                  <span class="info-value text-xs">{{ clusterInfo.clusterUUID || '未知' }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">版本:</span>
+                  <el-tooltip :content="getVersionDetails(clusterInfo.version)" placement="top" :disabled="!clusterInfo.version">
+                    <span class="info-value cursor-pointer flex items-center gap-1">
+                      {{ formatVersion(clusterInfo.version) || '未知' }}
+                      <el-icon v-if="clusterInfo.version"><InfoFilled /></el-icon>
+                    </span>
+                  </el-tooltip>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">角色:</span>
+                  <span class="info-value">master</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">状态:</span>
+                  <el-tag :type="getClusterStatusType(clusterHealth.status)" size="small">
+                    {{ clusterHealth.status?.toUpperCase() || '未知' }}
+                  </el-tag>
+                </div>
+             </div>
+          </el-card>
+       </el-col>
+
+       <el-col :span="12">
+          <el-card class="content-card h-full">
+             <template #header>
+                <div class="flex-between">
+                   <div class="items-center flex gap-2">
+                       <el-icon><DataLine /></el-icon> <span>集群健康状态</span>
+                   </div>
+                   <el-tag :type="getClusterStatusType(clusterHealth.status)" size="small">
+                     {{ clusterHealth.status?.toUpperCase() }}
+                   </el-tag>
+                </div>
+             </template>
+             <div class="info-list">
+                <div class="info-item">
+                  <span class="info-label">集群名称:</span>
+                  <span class="info-value">{{ clusterInfo.name || '未知' }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">节点总数:</span>
+                  <span class="info-value">{{ clusterHealth.number_of_nodes || 0 }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">活跃主分片:</span>
+                  <span class="info-value">{{ clusterHealth.active_primary_shards || 0 }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">活跃分片:</span>
+                  <span class="info-value">{{ clusterHealth.active_shards || 0 }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">数据节点:</span>
+                  <span class="info-value">{{ stats.activeNodes || 0 }}</span>
+                </div>
+                 <div class="info-item">
+                  <span class="info-label">总分片:</span>
+                  <span class="info-value">{{ stats.totalShards || 0 }}</span>
+                </div>
+             </div>
+          </el-card>
+       </el-col>
     </el-row>
   </div>
 </template>
 
 <script setup>
-import {nextTick, onMounted, ref, computed} from 'vue'
+import {nextTick, onMounted, ref } from 'vue'
 import {ElMessage} from 'element-plus'
-import {CircleCheck, CircleClose, Monitor, Plus, TrendCharts, DocumentCopy, Grid, Warning, Connection, InfoFilled} from '@element-plus/icons-vue'
+import {
+    CircleCheck, Monitor, DocumentCopy, Grid, Warning, Connection, 
+    InfoFilled, Search, Refresh, Tools, DataLine
+} from '@element-plus/icons-vue'
 import { getClusterStatus, getClusterHealth, getClusterInfo } from '../../api/es/cluster.js'
 import { getInstanceList } from '../../api/instance.js'
 import { getIndices } from '../../api/es/indices.js'
@@ -195,12 +199,9 @@ const masterNode = ref({
   jvmHeap: ''
 })
 
-// 最近活动
-const recentActivities = ref([])
-
 // 加载状态
 const loading = ref(false)
-const selectedInstance = ref(null) // 选中的实例ID
+const selectedInstance = ref(null)
 
 // 获取第一个可用的elasticsearch实例
 const fetchFirstInstance = async () => {
@@ -222,18 +223,6 @@ const fetchFirstInstance = async () => {
   }
 }
 
-// 获取当前实例配置
-const getCurrentConfig = () => {
-  // 这里应该从实例管理中获取实际配置
-  return {
-    host: 'http://localhost:9200',
-    username: 'elastic',
-    password: 'changeme',
-    skipSSLVerify: true
-  }
-}
-
-// 获取集群状态类型
 const getClusterStatusType = (status) => {
   switch (status) {
     case 'green': return 'success'
@@ -243,33 +232,6 @@ const getClusterStatusType = (status) => {
   }
 }
 
-// 获取活动图标
-const getActivityIcon = (type) => {
-  switch (type) {
-    case 'create': return DocumentCopy
-    case 'warning': return Warning
-    case 'success': return CircleCheck
-    default: return CircleCheck
-  }
-}
-
-// 格式化时间
-const formatTime = (timeStr) => {
-  if (!timeStr) return ''
-  const date = new Date(timeStr)
-  const now = new Date()
-  const diff = now - date
-  
-  if (diff < 3600000) { // 小于1小时
-    return Math.floor(diff / 60000) + ' min ago'
-  } else if (diff < 86400000) { // 小于1天
-    return Math.floor(diff / 3600000) + ' hours ago'
-  } else {
-    return date.toLocaleDateString()
-  }
-}
-
-// 格式化数字
 const formatNumber = (num) => {
   if (!num) return '0'
   if (num >= 1000000) {
@@ -280,30 +242,17 @@ const formatNumber = (num) => {
   return num.toString()
 }
 
-// 格式化版本信息
 const formatVersion = (versionStr) => {
   if (!versionStr) return '未知'
-  
-  // 提取版本号 (例如: "Elasticsearch 7.17.29" -> "7.17.29")
   const versionMatch = versionStr.match(/(\d+\.\d+\.\d+)/)
-  if (versionMatch) {
-    return versionMatch[1]
-  }
-  
-  // 如果没有找到标准格式，尝试提取其他版本信息
+  if (versionMatch) return versionMatch[1]
   const altVersionMatch = versionStr.match(/(\d+\.\d+)/)
-  if (altVersionMatch) {
-    return altVersionMatch[1]
-  }
-  
+  if (altVersionMatch) return altVersionMatch[1]
   return versionStr
 }
 
-// 获取版本详细信息（用于tooltip）
 const getVersionDetails = (versionStr) => {
   if (!versionStr) return ''
-  
-  // 提取构建信息
   const buildMatch = versionStr.match(/构建:\s*([^,)]+)/)
   const dateMatch = versionStr.match(/构建日期:\s*([^)]+)/)
   
@@ -313,11 +262,9 @@ const getVersionDetails = (versionStr) => {
   } else if (buildMatch) {
     details = `版本: ${formatVersion(versionStr)}\n构建: ${buildMatch[1]}`
   }
-  
   return details
 }
 
-// 获取数据
 const fetchData = async () => {
   if (!selectedInstance.value) {
     ElMessage.warning('请先选择一个Elasticsearch实例')
@@ -326,7 +273,6 @@ const fetchData = async () => {
 
   loading.value = true
   try {
-    // 并行获取集群状态、健康信息、基本信息和索引列表
     const [statusResponse, healthResponse, infoResponse, indicesResponse] = await Promise.all([
       getClusterStatus(selectedInstance.value),
       getClusterHealth(selectedInstance.value),
@@ -334,7 +280,6 @@ const fetchData = async () => {
       getIndices(selectedInstance.value)
     ])
 
-    // 更新集群状态
     if (statusResponse && statusResponse.data && statusResponse.data.cluster_status) {
       const statusData = statusResponse.data.cluster_status
       stats.value.activeNodes = statusData.number_of_nodes || 0
@@ -347,7 +292,6 @@ const fetchData = async () => {
       clusterInfo.value.version = statusData.version_info || ''
     }
 
-    // 更新健康信息
     if (healthResponse && healthResponse.data && healthResponse.data.health_info) {
       const healthData = healthResponse.data.health_info
       clusterHealth.value.status = healthData.status || 'unknown'
@@ -355,13 +299,11 @@ const fetchData = async () => {
       clusterHealth.value.active_primary_shards = healthData.active_primary_shards || 0
       clusterHealth.value.active_shards = healthData.active_shards || 0
       
-      // 更新文档数量
       if (healthData.doc_count !== undefined && healthData.doc_count !== null) {
         stats.value.totalDocs = formatNumber(healthData.doc_count)
       }
     }
 
-    // 更新基本信息
     if (infoResponse && infoResponse.data && infoResponse.data.cluster_info) {
       const infoData = infoResponse.data.cluster_info
       clusterInfo.value.name = infoData.cluster_name || ''
@@ -370,18 +312,14 @@ const fetchData = async () => {
       masterNode.value.name = infoData.name || ''
     }
 
-    // 更新索引数量
     if (indicesResponse && indicesResponse.data) {
       let indicesData = indicesResponse.data
-      // 检查是否在raw_response中
       if (indicesData.raw_response && Array.isArray(indicesData.raw_response)) {
         indicesData = indicesData.raw_response
       }
       
       if (Array.isArray(indicesData)) {
         stats.value.totalIndices = indicesData.length
-        
-        // 计算文档总数
         let totalDocs = 0
         indicesData.forEach(index => {
           const docCount = parseInt(index['docs.count']) || 0
@@ -393,22 +331,6 @@ const fetchData = async () => {
       }
     }
 
-    // 模拟一些最近活动
-    recentActivities.value = [
-      {
-        id: 1,
-        type: 'success',
-        title: `集群 "${clusterInfo.value.name}" 状态正常`,
-        timestamp: new Date(Date.now() - 3600000).toISOString()
-      },
-      {
-        id: 2,
-        type: 'info',
-        title: `Elasticsearch ${clusterInfo.value.version} 运行中`,
-        timestamp: new Date(Date.now() - 7200000).toISOString()
-      }
-    ]
-
   } catch (error) {
     console.error('获取数据失败:', error)
     ElMessage.error('获取集群数据失败: ' + (error.response?.data?.message || error.message))
@@ -417,7 +339,6 @@ const fetchData = async () => {
   }
 }
 
-// 刷新数据
 const refreshData = async () => {
   ElMessage.info('正在刷新数据...')
   try {
@@ -435,142 +356,37 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.es-dashboard {
-  padding: 20px;
-  background: #f5f7fa;
-  min-height: 100vh;
-}
-
-.page-title {
-  margin-bottom: 24px;
-}
-
-.title-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.page-title h1 {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: #2c3e50;
-}
-
-.instance-selector {
-  min-width: 200px;
-}
-
-/* 统计卡片 */
-.stats-section {
-  margin-bottom: 24px;
-}
-
-.stat-card {
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  display: flex;
-  align-items: center;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
-}
-
-.stat-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
+.header-icon-wrapper {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: var(--primary-color);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 16px;
   color: white;
 }
 
-.stat-icon.green {
-  background: linear-gradient(135deg, #4caf50, #66bb6a);
-}
+.items-center { display: flex; align-items: center; }
+.flex { display: flex; }
+.gap-2 { gap: 8px; }
+.gap-1 { gap: 4px; }
+.h-full { height: 100%; }
+.text-xs { font-size: 12px; }
+.cursor-pointer { cursor: pointer; }
 
-.stat-icon.blue {
-  background: linear-gradient(135deg, #2196f3, #42a5f5);
-}
-
-.stat-icon.orange {
-  background: linear-gradient(135deg, #ff9800, #ffa726);
-}
-
-.stat-icon.purple {
-  background: linear-gradient(135deg, #9c27b0, #ab47bc);
-}
-
-.stat-content {
-  flex: 1;
-}
-
-.stat-number {
-  font-size: 28px;
-  font-weight: 700;
-  color: #2c3e50;
-  margin-bottom: 4px;
-}
-
-.stat-label {
-  font-size: 14px;
-  color: #7f8c8d;
-  font-weight: 500;
-}
-
-/* 主内容区域 */
-.main-content {
-  margin-bottom: 24px;
-}
-
-.info-card {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-}
-
-.info-card :deep(.el-card__header) {
-  border-bottom: 1px solid #f0f0f0;
-  padding: 20px;
-  font-weight: 600;
-  font-size: 16px;
-  color: #2c3e50;
-}
-
-.info-card :deep(.el-card__body) {
-  padding: 20px;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-weight: 600;
-  font-size: 16px;
-  color: #2c3e50;
-}
-
-/* 信息列表 */
+/* Info List */
 .info-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
 }
 
 .info-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid #f8f9fa;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .info-item:last-child {
@@ -579,65 +395,12 @@ onMounted(async () => {
 
 .info-label {
   font-size: 14px;
-  color: #7f8c8d;
+  color: var(--text-sub);
   font-weight: 500;
 }
 
 .info-value {
   font-size: 14px;
-  color: #2c3e50;
-  font-weight: 400;
-}
-
-.version-info {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  cursor: pointer;
-}
-
-.version-icon {
-  font-size: 12px;
-  color: #909399;
-  transition: color 0.2s;
-}
-
-.version-info:hover .version-icon {
-  color: #409eff;
-}
-
-
-
-/* 响应式设计 */
-@media (max-width: 1200px) {
-  .main-content {
-    flex-direction: column;
-  }
-  
-  .chart-section {
-    order: 2;
-  }
-  
-  .info-section {
-    order: 1;
-  }
-}
-
-@media (max-width: 768px) {
-  .es-dashboard {
-    padding: 16px;
-  }
-  
-  .stats-section :deep(.el-col) {
-    margin-bottom: 16px;
-  }
-  
-  .stat-number {
-    font-size: 24px;
-  }
-  
-  .chart-container {
-    height: 250px;
-  }
+  color: var(--text-main);
 }
 </style>

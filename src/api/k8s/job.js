@@ -23,11 +23,11 @@ export const getJobDetail = (namespace, name, instanceId) => {
 }
 
 // 创建Job
-export const createJob = (data, instanceId) => {
+export const createJob = (namespace, yamlContent, instanceId) => {
   return request({
-    url: '/k8s/job/create',
+    url: `/k8s/job/create/${namespace}`,
     method: 'post',
-    data,
+    data: { yaml: yamlContent },
     params: {
       instance_id: instanceId
     }

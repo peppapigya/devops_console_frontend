@@ -14,10 +14,10 @@
     </el-card>
 
     <el-card class="content-card">
-      <div class="table-container">
+      <div class="autoops-table-wrapper">
         <el-table 
           :data="namespaceList" 
-          style="width: 100%" 
+          style="width: 100%" class="autoops-table" 
           v-loading="loading"
           height="calc(100vh - 280px)"
           :row-class-name="tableRowClassName"

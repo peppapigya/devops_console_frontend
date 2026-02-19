@@ -1,73 +1,85 @@
 <template>
-  <div class="dashboard">
-    <div class="dashboard-header">
-      <h1>DevOps 控制台</h1>
-      <div class="header-actions">
-        <el-button type="primary" @click="refreshData">
-          <el-icon><Refresh /></el-icon>
-          刷新
-        </el-button>
+  <div class="page-container">
+    <el-card class="page-header-card">
+      <div class="page-header">
+        <div class="header-left">
+          <div class="header-title-wrapper">
+             <h2>DevOps 控制台</h2>
+             <p class="subtitle">系统概览与核心指标</p>
+          </div>
+        </div>
+        <div class="header-right">
+          <el-button type="primary" @click="refreshData">
+            <el-icon><Refresh /></el-icon>
+            刷新
+          </el-button>
+        </div>
       </div>
-    </div>
+    </el-card>
 
     <!-- 统计卡片 -->
-    <div class="stats-cards">
-      <el-card class="stat-card">
-        <div class="stat-content">
-          <div class="stat-icon">
-            <el-icon size="32"><Monitor /></el-icon>
+    <el-row :gutter="20" class="mb-20">
+      <el-col :span="6">
+        <el-card class="stat-card" shadow="hover">
+          <div class="stat-content">
+            <div class="stat-icon bg-gradient-blue">
+              <el-icon><Monitor /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ stats.totalInstances || 0 }}</div>
+              <div class="stat-label">总实例数</div>
+            </div>
           </div>
-          <div class="stat-info">
-            <div class="stat-value">{{ stats.totalInstances || 0 }}</div>
-            <div class="stat-label">总实例数</div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card class="stat-card" shadow="hover">
+          <div class="stat-content">
+            <div class="stat-icon bg-gradient-green">
+              <el-icon><CircleCheck /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ stats.activeInstances || 0 }}</div>
+              <div class="stat-label">活跃实例</div>
+            </div>
           </div>
-        </div>
-      </el-card>
-
-      <el-card class="stat-card">
-        <div class="stat-content">
-          <div class="stat-icon active">
-            <el-icon size="32"><CircleCheck /></el-icon>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card class="stat-card" shadow="hover">
+          <div class="stat-content">
+            <div class="stat-icon bg-gradient-red">
+              <el-icon><CircleClose /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ stats.errorInstances || 0 }}</div>
+              <div class="stat-label">错误实例</div>
+            </div>
           </div>
-          <div class="stat-info">
-            <div class="stat-value">{{ stats.activeInstances || 0 }}</div>
-            <div class="stat-label">活跃实例</div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card class="stat-card" shadow="hover">
+          <div class="stat-content">
+            <div class="stat-icon bg-gradient-orange">
+              <el-icon><Timer /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ stats.todayTests || 0 }}</div>
+              <div class="stat-label">今日测试</div>
+            </div>
           </div>
-        </div>
-      </el-card>
-
-      <el-card class="stat-card">
-        <div class="stat-content">
-          <div class="stat-icon error">
-            <el-icon size="32"><CircleClose /></el-icon>
-          </div>
-          <div class="stat-info">
-            <div class="stat-value">{{ stats.errorInstances || 0 }}</div>
-            <div class="stat-label">错误实例</div>
-          </div>
-        </div>
-      </el-card>
-
-      <el-card class="stat-card">
-        <div class="stat-content">
-          <div class="stat-icon warning">
-            <el-icon size="32"><Timer /></el-icon>
-          </div>
-          <div class="stat-info">
-            <div class="stat-value">{{ stats.todayTests || 0 }}</div>
-            <div class="stat-label">今日测试</div>
-          </div>
-        </div>
-      </el-card>
-    </div>
+        </el-card>
+      </el-col>
+    </el-row>
 
     <!-- 图表区域 -->
     <div class="charts-section">
       <el-row :gutter="20">
         <el-col :span="12">
-          <el-card class="chart-card">
+          <el-card class="content-card">
             <template #header>
-              <div class="card-header">
+              <div class="flex-between">
                 <span>实例类型分布</span>
               </div>
             </template>
@@ -75,9 +87,9 @@
           </el-card>
         </el-col>
         <el-col :span="12">
-          <el-card class="chart-card">
+          <el-card class="content-card">
             <template #header>
-              <div class="card-header">
+              <div class="flex-between">
                 <span>最近连接测试</span>
               </div>
             </template>
@@ -107,11 +119,11 @@
     </div>
 
     <!-- 实例状态概览 -->
-    <el-card class="instances-overview">
+    <el-card class="content-card mt-20">
       <template #header>
-        <div class="card-header">
+        <div class="flex-between">
           <span>实例状态概览</span>
-          <el-button link @click="$router.push('/instances')">查看全部</el-button>
+          <el-button link type="primary" @click="$router.push('/instances')">查看全部</el-button>
         </div>
       </template>
       <div class="instances-grid">
@@ -194,6 +206,9 @@ const initTypeChart = () => {
     legend: {
       orient: 'vertical',
       left: 10,
+      textStyle: {
+        color: '#606266'
+      },
       data: ['暂无数据']
     },
     series: [
@@ -367,6 +382,9 @@ const updateTypeChart = (allInstances) => {
     legend: {
       orient: 'vertical',
       left: 10,
+      textStyle: {
+        color: '#606266'
+      },
       data: chartData.map(item => item.name)
     },
     series: [
@@ -412,241 +430,38 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.dashboard {
-  padding: 24px;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e4e7eb 100%);
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  min-height: 200px;
-}
-
-.dashboard-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 28px;
-  padding: 8px 0;
-}
-
-.dashboard-header h1 {
-  margin: 0;
-  color: #1a1a1a;
-  font-size: 28px;
-  font-weight: 600;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.stats-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 20px;
-  margin-bottom: 28px;
-}
-
-.stat-card {
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border-radius: 16px;
-  overflow: hidden;
-  position: relative;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-}
-
-.stat-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-}
-
-.stat-card:hover {
-  transform: translateY(-8px) scale(1.02);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
-}
-
-.stat-card:hover::before {
-  height: 6px;
-}
-
-.stat-content {
-  display: flex;
-  align-items: center;
-  padding: 24px;
-  position: relative;
-}
-
-.stat-icon {
-  width: 72px;
-  height: 72px;
-  border-radius: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 20px;
-  position: relative;
-  transition: all 0.3s ease;
-}
-
-.stat-icon::after {
-  content: '';
-  position: absolute;
-  top: -3px;
-  left: -3px;
-  right: -3px;
-  bottom: -3px;
-  border-radius: 20px;
-  background: inherit;
-  opacity: 0.2;
-  z-index: -1;
-}
-
-.stat-icon {
-  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-  color: #1976d2;
-}
-
-.stat-icon.active {
-  background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%);
-  color: #4caf50;
-}
-
-.stat-icon.error {
-  background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
-  color: #f44336;
-}
-
-.stat-icon.warning {
-  background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
-  color: #ff9800;
-}
-
-.stat-card:hover .stat-icon {
-  transform: rotate(5deg) scale(1.1);
-}
-
-.stat-info {
-  flex: 1;
-}
-
-.stat-value {
-  font-size: 32px;
-  font-weight: 700;
-  color: #1a1a1a;
-  line-height: 1.2;
-  margin-bottom: 4px;
-}
-
-.stat-label {
-  font-size: 14px;
-  color: #666;
-  font-weight: 500;
-  letter-spacing: 0.5px;
-}
-
-.charts-section {
-  margin-bottom: 28px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.chart-card {
-  display: flex;
-  flex-direction: column;
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-  transition: all 0.3s ease;
-}
-
-.chart-card:hover {
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
-}
-
-.chart-card :deep(.el-card__body) {
-  display: flex;
-  flex-direction: column;
-  padding: 24px;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-weight: 600;
-  font-size: 16px;
-  color: #1a1a1a;
-}
-
+/* Only specific overrides not covered by global styles */
 .chart-container {
-  width: 100%;
   height: 320px;
-  position: relative;
 }
 
 .test-history {
-  max-height: 320px;
+  height: 320px;
   overflow-y: auto;
-  padding-right: 8px;
-}
-
-.test-history::-webkit-scrollbar {
-  width: 6px;
-}
-
-.test-history::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 3px;
-}
-
-.test-history::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 3px;
-}
-
-.test-history::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
 }
 
 .test-item {
   display: flex;
   align-items: center;
-  padding: 16px;
-  margin-bottom: 8px;
-  border-radius: 12px;
-  background-color: #fafafa;
-  transition: all 0.2s ease;
-  border: 1px solid transparent;
-}
-
-.test-item:hover {
-  background-color: #f0f0f0;
-  border-color: #e0e0e0;
-  transform: translateX(4px);
+  padding: 12px;
+  border-bottom: 1px solid var(--border-color);
+  transition: background-color 0.2s;
 }
 
 .test-item:last-child {
-  margin-bottom: 0;
+  border-bottom: none;
+}
+
+.test-item:hover {
+  background-color: #f5f7fa;
 }
 
 .test-status {
-  margin-right: 16px;
-  width: 32px;
-  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  background-color: #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-right: 12px;
+  font-size: 18px;
 }
 
 .test-info {
@@ -654,154 +469,59 @@ onMounted(async () => {
 }
 
 .test-name {
-  font-weight: 600;
-  color: #1a1a1a;
   font-size: 14px;
+  font-weight: 500;
+  color: var(--text-main);
 }
 
 .test-time {
   font-size: 12px;
-  color: #999;
-  margin-top: 4px;
+  color: var(--text-sub);
 }
 
 .test-response {
-  font-size: 14px;
-  color: #666;
+  font-size: 13px;
   font-weight: 500;
+  color: var(--text-main);
 }
 
 .error-msg {
-  color: #f56c6c;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.instances-overview {
-  margin-bottom: 20px;
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  color: var(--danger-color);
 }
 
 .instances-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 20px;
 }
 
 .instance-item {
   padding: 20px;
-  border-radius: 12px;
-  background-color: #fafafa;
-  transition: all 0.3s ease;
-  border: 1px solid #e0e0e0;
-  position: relative;
-  overflow: hidden;
-}
-
-.instance-item::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 4px;
-  height: 100%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  transform: scaleY(0);
-  transition: transform 0.3s ease;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: #fff;
+  transition: all 0.3s;
 }
 
 .instance-item:hover {
-  background-color: #f0f0f0;
-  transform: translateY(-4px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
-}
-
-.instance-item:hover::before {
-  transform: scaleY(1);
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-2px);
 }
 
 .instance-name {
+  font-size: 16px;
   font-weight: 600;
-  color: #1a1a1a;
   margin-bottom: 12px;
-  font-size: 14px;
+  color: var(--text-main);
 }
 
 .instance-status {
   display: flex;
-  align-items: center;
-}
-
-.instance-status .el-tag {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-weight: 500;
+  justify-content: flex-start;
 }
 
 .empty-state {
   padding: 40px;
   text-align: center;
-}
-
-.empty-state :deep(.el-empty) {
-  padding: 40px 0;
-}
-
-/* 暗色主题适配 */
-:global(.dark) .dashboard {
-  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-}
-
-:global(.dark) .dashboard-header h1 {
-  background: linear-gradient(135deg, #9fa8da 0%, #b39ddb 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-:global(.dark) .stat-card {
-  background-color: var(--el-bg-color);
-}
-
-:global(.dark) .stat-value {
-  color: var(--el-text-color-primary);
-}
-
-:global(.dark) .stat-label {
-  color: var(--el-text-color-regular);
-}
-
-:global(.dark) .chart-card {
-  background-color: var(--el-bg-color);
-}
-
-:global(.dark) .card-header {
-  color: var(--el-text-color-primary);
-}
-
-:global(.dark) .test-item {
-  background-color: var(--el-fill-color-light);
-}
-
-:global(.dark) .test-item:hover {
-  background-color: var(--el-fill-color);
-}
-
-:global(.dark) .instance-item {
-  background-color: var(--el-fill-color-light);
-  border-color: var(--el-border-color);
-}
-
-:global(.dark) .instance-item:hover {
-  background-color: var(--el-fill-color);
-}
-
-:global(.dark) .instance-name {
-  color: var(--el-text-color-primary);
 }
 </style>

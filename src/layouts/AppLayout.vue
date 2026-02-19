@@ -20,9 +20,9 @@
           :default-active="$route.path"
           class="sidebar-menu"
           :collapse="isCollapsed"
-          background-color="transparent"
-          text-color="#a0a0b0"
-          active-text-color="#fff"
+          background-color="#ffffff"
+          text-color="#606266"
+          active-text-color="#409EFF"
           unique-opened
           router
         >
@@ -56,7 +56,7 @@
       
       <!-- 底部折叠按钮 -->
       <div class="sidebar-footer" @click="toggleCollapse">
-        <el-icon :size="20" color="#a0a0b0">
+        <el-icon :size="20" color="#909399">
           <Expand v-if="isCollapsed" />
           <Fold v-else />
         </el-icon>
@@ -220,7 +220,8 @@ import {
   Sunny, Moon, House, DocumentCopy, Grid, CopyDocument, TrendCharts,
   Connection, Plus, List, Search, Refresh, Edit, ArrowRight,
   DataLine, WarningFilled, Delete, MoreFilled, Box, Files, Folder, FolderOpened, DataBoard, Timer,
-  Expand, Fold, CaretBottom, Cpu, Coin, Ticket, Share, Operation, Document, Key, BellFilled, Histogram
+  Expand, Fold, CaretBottom, Cpu, Coin, Ticket, Share, Operation, Document, Key, BellFilled, Histogram,
+  Top, Right
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -279,9 +280,27 @@ const allMenuRoutes = computed(() => {
       children: [
         {path: '/k8s/pod', meta: {title: 'Pod管理', icon: 'Box', instanceType: 'kubernetes'}},
         {path: '/k8s/deployment', meta: {title: 'Deployments', icon: 'Files', instanceType: 'kubernetes'}},
+        {path: '/k8s/replicaset', meta: {title: 'ReplicaSets', icon: 'CopyDocument', instanceType: 'kubernetes'}},
+        {path: '/k8s/rc', meta: {title: 'RCs', icon: 'CopyDocument', instanceType: 'kubernetes'}},
         {path: '/k8s/daemonset', meta: {title: 'DaemonSets', icon: 'Monitor', instanceType: 'kubernetes'}},
         {path: '/k8s/job', meta: {title: 'Jobs', icon: 'List', instanceType: 'kubernetes'}},
         {path: '/k8s/cronjob', meta: {title: 'CronJobs', icon: 'Timer', instanceType: 'kubernetes'}},
+      ]
+    },
+    {
+      path: 'k8s-autoscaling',
+      meta: {title: '弹性伸缩', icon: 'TrendCharts'},
+      children: [
+        {path: '/k8s/hpa', meta: {title: 'HPA', icon: 'Right', instanceType: 'kubernetes'}},
+        {path: '/k8s/vpa', meta: {title: 'VPA', icon: 'Top', instanceType: 'kubernetes'}},
+      ]
+    },
+    {
+      path: 'k8s-extension',
+      meta: {title: '扩展中心', icon: 'Cpu'},
+      children: [
+        {path: '/k8s/crd', meta: {title: 'CRD', icon: 'Cpu', instanceType: 'kubernetes'}},
+        {path: '/k8s/operator', meta: {title: 'Operators', icon: 'Box', instanceType: 'kubernetes'}},
       ]
     },
     {
@@ -507,20 +526,21 @@ watch(() => getSelectedInstanceType(), () => {
   display: flex;
   height: 100vh;
   width: 100vw;
-  background-color: #f4f6f9;
+  background-color: #f5f7fa; /* AutoOps 主题背景色 */
   overflow: hidden;
 }
 
 /* Sidebar Styling */
 .sidebar {
   width: 260px;
-  background: #1e1e2d;
+  background: #ffffff;
   display: flex;
   flex-direction: column;
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 4px 0 24px rgba(0,0,0,0.1);
+  box-shadow: 2px 0 8px rgba(0,0,0,0.04);
   z-index: 200;
   flex-shrink: 0;
+  border-right: 1px solid #e4e7ed;
 }
 
 .sidebar.is-collapsed {
@@ -532,7 +552,7 @@ watch(() => getSelectedInstanceType(), () => {
   display: flex;
   align-items: center;
   padding: 0 20px;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
+  border-bottom: 1px solid #e4e7ed;
   cursor: pointer;
   overflow: hidden;
 }
@@ -550,7 +570,7 @@ watch(() => getSelectedInstanceType(), () => {
 }
 
 .logo-text {
-  color: #fff;
+  color: #2c3e50;
   font-weight: 700;
   font-size: 18px;
   white-space: nowrap;
@@ -575,14 +595,36 @@ watch(() => getSelectedInstanceType(), () => {
 }
 
 :deep(.el-menu-item.is-active) {
-  background: rgba(50, 108, 229, 0.1) !important;
-  color: #6993FF !important;
+  background: #ecf5ff !important;
+  color: #409EFF !important;
   font-weight: 500;
 }
 
 :deep(.el-menu-item:hover) {
-  background-color: rgba(255,255,255,0.03) !important;
-  color: #fff !important;
+  background-color: #f5f7fa !important;
+  color: #303133 !important;
+}
+
+/* 子菜单样式 */
+:deep(.el-sub-menu__title) {
+  height: 50px;
+  line-height: 50px;
+  margin: 4px 12px;
+  border-radius: 8px;
+  color: #606266 !important;
+}
+
+:deep(.el-sub-menu__title:hover) {
+  background-color: #f5f7fa !important;
+  color: #303133 !important;
+}
+
+:deep(.el-sub-menu.is-active > .el-sub-menu__title) {
+  color: #409EFF !important;
+}
+
+:deep(.el-menu--inline .el-menu-item) {
+  background-color: #fafafa !important;
 }
 
 .sidebar-footer {
@@ -590,13 +632,13 @@ watch(() => getSelectedInstanceType(), () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-top: 1px solid rgba(255,255,255,0.05);
+  border-top: 1px solid #e4e7ed;
   cursor: pointer;
   transition: background 0.2s;
 }
 
 .sidebar-footer:hover {
-  background: rgba(255,255,255,0.03);
+  background: #f5f7fa;
 }
 
 /* Main Content Styling */
@@ -605,7 +647,7 @@ watch(() => getSelectedInstanceType(), () => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background-color: #f4f6f9; /* Light mode bg */
+  background-color: #f5f7fa; /* AutoOps 主题背景色 */
 }
 
 /* Top Header */
