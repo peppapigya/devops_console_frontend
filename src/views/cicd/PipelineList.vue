@@ -275,7 +275,7 @@ const handleRun = async (row) => {
     }
 }
 const handleHistory = (row) => {
-    router.push(`/cicd/runs/${row.id}-latest`)
+    router.push(`/cicd/pipelines/${row.id}/runs`)
 }
 
 const handleDelete = async (row) => {

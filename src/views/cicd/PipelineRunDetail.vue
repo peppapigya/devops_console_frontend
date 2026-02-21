@@ -4,14 +4,14 @@
     <el-card class="page-header-card">
        <div class="page-header">
          <div class="header-left">
-           <el-button link class="back-btn" @click="$router.push('/cicd/pipelines')">
+           <el-button link class="back-btn" @click="$router.push(`/cicd/pipelines/${pipelineId}/runs`)">
               <el-icon><ArrowLeft /></el-icon>
            </el-button>
            <div class="header-content ml-4">
               <div class="flex items-center gap-3">
                  <h2 class="m-0 page-title">{{ pipeline?.name || '加载中...' }}</h2>
                  <el-tag :type="getStatusType(run?.status)" effect="light" class="font-medium">
-                    {{ run?.status || 'Active' }} 
+                    {{ run?.status || 'Pending' }} 
                  </el-tag>
               </div>
               <div class="meta-row mt-2">
@@ -19,7 +19,7 @@
                  <el-divider direction="vertical" />
                  <span class="meta-item"><el-icon><User /></el-icon> {{ run?.operator || 'System' }}</span>
                  <el-divider direction="vertical" />
-                 <span class="meta-item"><el-icon><Timer /></el-icon> {{ run?.duration || '0s' }}</span>
+                 <span class="meta-item"><el-icon><Timer /></el-icon> {{ formatDuration(run?.duration) }}</span>
               </div>
            </div>
          </div>
@@ -95,12 +95,12 @@
                  <div class="step-details-panel">
                     <el-descriptions :column="1" border>
                        <el-descriptions-item label="步骤名称">{{ currentStep?.name }}</el-descriptions-item>
-                       <el-descriptions-item label="镜像">{{ currentStep?.image }}</el-descriptions-item>
+                       <el-descriptions-item label="镜像">{{ currentStep?.image || '-' }}</el-descriptions-item>
                        <el-descriptions-item label="运行节点">
                            {{ currentStep?.podName || '-' }}
                        </el-descriptions-item>
-                       <el-descriptions-item label="耗时">{{ currentStep?.duration }}</el-descriptions-item>
-                       <el-descriptions-item label="开始时间">-</el-descriptions-item>
+                       <el-descriptions-item label="耗时">{{ currentStep?.duration || '-' }}</el-descriptions-item>
+                       <el-descriptions-item label="开始时间">{{ currentStep?.startedAt || '-' }}</el-descriptions-item>
                     </el-descriptions>
                  </div>
              </el-tab-pane>
@@ -116,14 +116,17 @@ import { useRoute, useRouter } from 'vue-router'
 import { getPipelineRun, getPipeline, triggerPipeline, getPipelineRunSteps, getPipelineRunLogs } from '@/api/cicd.js'
 import { 
   ArrowLeft, User, Timer, Refresh, VideoPlay, 
-  Loading, Monitor, CopyDocument, Download, Edit
+  Loading, CopyDocument, Download, Edit
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import PipelineGraph from './components/PipelineGraph.vue'
 
 const route = useRoute()
 const router = useRouter()
-const runId = route.params.id
+
+// 新路由结构: /cicd/pipelines/:id/runs/:runId
+const pipelineId = route.params.id
+const runId = route.params.runId
 
 const run = ref(null)
 const pipeline = ref(null)
@@ -138,54 +141,53 @@ const triggering = ref(false)
 const pollingTimer = ref(null)
 
 const handleEditPipeline = () => {
-    router.push(`/cicd/pipelines/${pipeline.value.id}/edit`)
+    router.push(`/cicd/pipelines/${pipelineId}/edit`)
 }
 
 const currentStep = computed(() => selectedStepIndex.value >= 0 ? steps.value[selectedStepIndex.value] : null)
 
-const fetchData = async () => {
+const fetchData = async (silent = false) => {
     try {
         const resRun = await getPipelineRun(runId)
-        run.value = resRun.data
-        
-        if (run.value.pipeline_id) {
-            const resPipe = await getPipeline(run.value.pipeline_id)
-            pipeline.value = resPipe.data
+        run.value = resRun.data?.pipelineRun || resRun.data
+
+        if (pipelineId && !pipeline.value) {
+            const resPipe = await getPipeline(pipelineId)
+            pipeline.value = resPipe.data?.data || resPipe.data
         }
 
         const resSteps = await getPipelineRunSteps(runId)
-        steps.value = resSteps.data.items || resSteps.data || []
+        steps.value = resSteps.data?.items || resSteps.data || []
         
-        // Auto select first running/failed step IF drawer is open, or update logs if open
         if (drawerVisible.value && currentStep.value) {
-             fetchLogs(currentStep.value.name)
+             fetchLogs(currentStep.value.name, silent) // 继承 silent 模式
         }
     } catch(e) {
         console.error(e)
-        // Silent error or small toast
     }
 }
 
-const fetchLogs = async (stepName) => {
+const fetchLogs = async (stepName, silent = false) => {
     if (!stepName) return
-    loadingLogs.value = true
-    // Don't clear logs immediately to avoid flicker if polling, only if switching steps? 
-    // For now clear to show loading state is safer for correctness
-    logs.value = []
+    if (!silent) {
+        loadingLogs.value = true
+        logs.value = []
+    }
     try {
         const res = await getPipelineRunLogs(runId, stepName)
-        const logData = res.data.logs || res.data || ''
-        if (Array.isArray(logData)) {
-            logs.value = logData
-        } else {
-            logs.value = logData.split('\n')
+        const logData = res.data?.logs || res.data || ''
+        const newLines = Array.isArray(logData) ? logData : logData.split('\n')
+        // 静默模式只在内容有变化时更新（避免闪烁）
+        if (!silent || JSON.stringify(newLines) !== JSON.stringify(logs.value)) {
+            logs.value = newLines
         }
     } catch(e) {
-        // logs.value = ['加载日志失败。'] 
+        // silent
     } finally {
-        loadingLogs.value = false
+        if (!silent) loadingLogs.value = false
     }
 }
+
 
 const selectStep = (index) => {
     if (index < 0 || index >= steps.value.length) return
@@ -203,24 +205,40 @@ const handleNodeClick = (stepName) => {
 }
 
 const handleDrawerClose = (done) => {
-    selectedStepIndex.value = -1 // Deselect on close? Or keep selected? Let's keep state simple.
+    selectedStepIndex.value = -1
     done()
 }
 
 const handleRerun = async () => {
     triggering.value = true
     try {
-        await triggerPipeline(pipeline.value.id, {})
+        await triggerPipeline(pipelineId, {})
         ElMessage.success('已触发重新运行')
-        setTimeout(fetchData, 1000)
+        setTimeout(() => {
+            // 跳转到运行历史列表，用户可看到新一条记录
+            router.push(`/cicd/pipelines/${pipelineId}/runs`)
+        }, 1500)
+    } catch(e) {
+        ElMessage.error('触发失败')
     } finally {
         triggering.value = false
     }
 }
 
 const getStatusType = (status) => {
-     const map = { 'Succeeded': 'success', 'Failed': 'danger', 'Running': 'warning', 'Pending': 'info' }
+     const map = { 'Succeeded': 'success', 'Failed': 'danger', 'Running': 'warning', 'Pending': 'info', 'Error': 'danger' }
      return map[status] || 'info'
+}
+
+const formatDuration = (seconds) => {
+    if (seconds === null || seconds === undefined) return '-'
+    if (seconds === 0) return '< 1s'
+    const h = Math.floor(seconds / 3600)
+    const m = Math.floor((seconds % 3600) / 60)
+    const s = seconds % 60
+    if (h > 0) return `${h}h ${m}m`
+    if (m > 0) return `${m}m ${s}s`
+    return `${s}s`
 }
 
 const formatLogLine = (line) => {
@@ -236,11 +254,10 @@ const startPolling = () => {
     if (pollingTimer.value) clearInterval(pollingTimer.value)
     pollingTimer.value = setInterval(() => {
         if (run.value?.status === 'Running' || run.value?.status === 'Pending') {
-            fetchData()
+            fetchData(true) // silent，不闪烁
         }
-        // Also poll logs if drawer open and step is running
         if (drawerVisible.value && currentStep.value?.status === 'Running') {
-            fetchLogs(currentStep.value.name)
+            fetchLogs(currentStep.value.name, true) // silent，不闪烁
         }
     }, 5000)
 }
@@ -266,9 +283,18 @@ onUnmounted(() => {
 .page-header-card { margin-bottom: 16px; flex-shrink: 0; }
 .back-btn { font-size: 18px; color: var(--text-sub); }
 .ml-4 { margin-left: 16px; }
+.ml-2 { margin-left: 8px; }
 .mr-2 { margin-right: 8px; }
 .m-0 { margin: 0; }
 .mt-2 { margin-top: 8px; }
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.header-left { display: flex; align-items: center; }
+.header-right { display: flex; gap: 10px; }
 
 .page-title { font-size: 18px; font-weight: 600; color: var(--text-main); }
 .meta-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-sub); }
@@ -282,7 +308,7 @@ onUnmounted(() => {
 }
 
 .graph-card {
-    flex: 1; /* Take all remaining space */
+    flex: 1;
     padding: 0;
     overflow: hidden;
     position: relative;
@@ -368,7 +394,7 @@ onUnmounted(() => {
 
 :deep(.el-drawer__body) {
     padding: 0;
-    overflow: hidden; /* Let internal tabs handle scroll */
+    overflow: hidden;
 }
 :deep(.el-tabs__content) {
     flex: 1;

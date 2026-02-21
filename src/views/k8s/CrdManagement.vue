@@ -111,7 +111,7 @@ export default {
       this.loading = true
       try {
         const res = await getCRDList(this.instanceId)
-        if (res.code === 200) {
+        if (res.status === 200) {
           this.tableData = res.data.crdList
         }
       } catch (error) {
@@ -123,7 +123,7 @@ export default {
     async handleDetail(row) {
       try {
         const res = await getCRDDetail(row.name, this.instanceId)
-        if (res.code === 200) {
+        if (res.status === 200) {
           this.detailData = JSON.stringify(res.data.crdDetail, null, 2)
           this.detailVisible = true
         }
@@ -139,7 +139,7 @@ export default {
       }).then(async () => {
         try {
           const res = await deleteCRD(row.name, this.instanceId)
-          if (res.code === 200) {
+          if (res.status === 200) {
             this.$message.success('删除成功')
             this.fetchData()
           }

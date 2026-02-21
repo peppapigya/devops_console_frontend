@@ -59,7 +59,7 @@ export const triggerPipeline = (id, data) => {
 // Pipeline Runs
 export const getPipelineRuns = (params) => {
     return request({
-        url: '/pipeline-runs',
+        url: '/pipeline-runs/page',
         method: 'get',
         params
     })
@@ -69,6 +69,13 @@ export const getPipelineRun = (id) => {
     return request({
         url: `/pipeline-runs/${id}`,
         method: 'get'
+    })
+}
+
+export const deletePipelineRun = (id) => {
+    return request({
+        url: `/pipeline-runs/${id}`,
+        method: 'delete'
     })
 }
 

@@ -425,12 +425,21 @@ const dashboardRoutes = [
     }
   },
   {
-    path: 'cicd/runs/:id',
+    path: 'cicd/pipelines/:id/runs',
+    name: 'PipelineRunList',
+    component: () => import('../views/cicd/PipelineRunList.vue'),
+    meta: {
+      title: '运行历史',
+      hideInMenu: true
+    }
+  },
+  {
+    path: 'cicd/pipelines/:id/runs/:runId',
     name: 'PipelineRunDetail',
     component: () => import('../views/cicd/PipelineRunDetail.vue'),
     meta: {
       title: '执行详情',
-      hideInMenu: true // Assuming we have such logic or handled by manual menu construction
+      hideInMenu: true
     }
   }
 ]
