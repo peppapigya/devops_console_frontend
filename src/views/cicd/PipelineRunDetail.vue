@@ -241,8 +241,45 @@ const formatDuration = (seconds) => {
     return `${s}s`
 }
 
+// ANSI 颜色码 → CSS 颜色映射（标准 16 色）
+const ANSI_COLORS = {
+  30: '#555', 31: '#f85149', 32: '#3fb950', 33: '#d29922',
+  34: '#58a6ff', 35: '#bc8cff', 36: '#39c5cf', 37: '#b1bac4',
+  90: '#666', 91: '#ff7b72', 92: '#56d364', 93: '#e3b341',
+  94: '#79c0ff', 95: '#d2a8ff', 96: '#76e3ea', 97: '#f0f6fc',
+}
+
 const formatLogLine = (line) => {
-    return line
+  // 先做 HTML 实体转义，防止 XSS
+  let safe = line
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+
+  let openSpan = false
+  // 将 ESC[...m 序列替换为 <span> 标签
+  safe = safe.replace(/\x1b\[([0-9;]*)m/g, (_, codes) => {
+    const parts = codes.split(';').map(Number)
+    let out = ''
+    if (openSpan) { out += '</span>'; openSpan = false }
+    // 0 = reset，无颜色
+    if (parts.includes(0) || parts.length === 0) return out
+    const styles = []
+    parts.forEach(c => {
+      if (ANSI_COLORS[c]) styles.push(`color:${ANSI_COLORS[c]}`)
+      if (c === 1) styles.push('font-weight:bold')
+      if (c === 2) styles.push('opacity:0.6')
+    })
+    if (styles.length) {
+      out += `<span style="${styles.join(';')}">`
+      openSpan = true
+    }
+    return out
+  })
+  // 清除所有未识别的 ESC 序列
+  safe = safe.replace(/\x1b\[[0-9;]*[A-Za-z]/g, '')
+  if (openSpan) safe += '</span>'
+  return safe
 }
 
 const copyLogs = () => {

@@ -342,25 +342,58 @@ const deleteStep = (id) => {
 }
 
 // ─── Graph <-> API 转换 ───────────────────────────────────────────────────────
-const buildStepsFromGraph = (pid) => {
-  return nodes.value
-    .filter(node => node.id !== GIT_CLONE_ID)  // 过滤掉 git-clone 展示节点
-    .map((node, index) => {
-      const deps = edges.value
-        .filter(e => e.target === node.id && e.source !== GIT_CLONE_ID)
-        .map(e => nodes.value.find(n => n.id === e.source)?.data?.name)
-        .filter(Boolean)
-      const step = {
-        name:      node.data.name || `step-${index}`,
-        image:     node.data.image || '',
-        commands:  node.data.commands || '',
-        dependsOn: deps.length ? deps.join(',') : null,
-        sort:      index,
-        pipelineId: Number(pid)
-      }
-      if (node.data.stepId) step.id = node.data.stepId
-      return step
+// 对用户节点做拓扑排序（Kahn BFS），返回按执行顺序排列的节点列表
+const topoSortNodes = () => {
+  const userNodes = nodes.value.filter(n => n.id !== GIT_CLONE_ID)
+  const idToIdx = new Map(userNodes.map((n, i) => [n.id, i]))
+  // 构建邻接表（只计算用户步骤之间的依赖边）
+  const inDegree = new Array(userNodes.length).fill(0)
+  const adjList  = Array.from({ length: userNodes.length }, () => [])
+  edges.value.forEach(e => {
+    if (e.source === GIT_CLONE_ID || e.target === GIT_CLONE_ID) return
+    const src = idToIdx.get(e.source)
+    const tgt = idToIdx.get(e.target)
+    if (src === undefined || tgt === undefined) return
+    adjList[src].push(tgt)
+    inDegree[tgt]++
+  })
+  // Kahn BFS
+  const queue  = []
+  const sorted = []
+  inDegree.forEach((deg, i) => { if (deg === 0) queue.push(i) })
+  while (queue.length) {
+    const cur = queue.shift()
+    sorted.push(cur)
+    adjList[cur].forEach(next => {
+      if (--inDegree[next] === 0) queue.push(next)
     })
+  }
+  // 如果有环（理论上不应该），剩余节点追加到末尾
+  if (sorted.length < userNodes.length) {
+    for (let i = 0; i < userNodes.length; i++) {
+      if (!sorted.includes(i)) sorted.push(i)
+    }
+  }
+  return sorted.map(i => userNodes[i])
+}
+
+const buildStepsFromGraph = (pid) => {
+  // 使用拓扑排序后的节点顺序，sort 值 = 拓扑序索引，保证正确的执行顺序
+  const sortedNodes = topoSortNodes()
+  return sortedNodes.map((node, index) => {
+    const deps = edges.value
+      .filter(e => e.target === node.id && e.source !== GIT_CLONE_ID)
+      .map(e => nodes.value.find(n => n.id === e.source)?.data?.name)
+      .filter(Boolean)
+    return {
+      name:       node.data.name || `step-${index}`,
+      image:      node.data.image || '',
+      commands:   node.data.commands || '',
+      dependsOn:  deps.length ? deps.join(',') : null,
+      sort:       index,   // 拓扑序索引，确保 sort 严格反映执行顺序
+      pipelineId: Number(pid)
+    }
+  })
 }
 
 const loadGraph = (steps) => {
@@ -476,22 +509,26 @@ const handleSave = async () => {
     }
     if (!pid) throw new Error('无法获取流水线 ID')
 
-    // 2. 删除已移除的步骤
-    for (const delId of deletedStepIds.value) await deletePipelineStep(delId)
+    // 2. 获取当前所有已存在的步骤并全部删除
+    //    这样可以避免旧的 sort 值残留，配合拓扑排序确保数据库中 sort 完全重置
+    const existingSteps = nodes.value
+      .filter(n => n.id !== GIT_CLONE_ID && n.data?.stepId)
+      .map(n => n.data.stepId)
+    const allDeleteIds = [...new Set([...existingSteps, ...deletedStepIds.value])]
+    for (const delId of allDeleteIds) await deletePipelineStep(delId)
     deletedStepIds.value = []
 
-    // 3. 保存步骤
+    // 3. 按拓扑排序批量新建步骤（sort 由拓扑序决定，0 = 最先执行）
     const steps = buildStepsFromGraph(pid)
     for (const step of steps) {
-      if (step.id) {
-        await updatePipelineStep(step)
-      } else {
-        const res = await createPipelineStep(step)
-        const newId = res.data.data?.id
-        if (newId) {
-          const node = nodes.value.find(n => n.data?.name === step.name)
-          if (node) node.data = { ...node.data, stepId: newId }
-        }
+      // 注意：此处不传 id，全部作为新建，避免 ID 混乱
+      const { id: _omit, ...stepPayload } = step
+      const res = await createPipelineStep(stepPayload)
+      const newId = res.data.data?.id
+      if (newId) {
+        // 回写新 stepId 到节点 data，下次保存时可识别
+        const node = nodes.value.find(n => n.data?.name === step.name && n.id !== GIT_CLONE_ID)
+        if (node) node.data = { ...node.data, stepId: newId }
       }
     }
 
