@@ -272,18 +272,22 @@
           </template>
         </el-table-column>
         
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column label="操作" width="220" fixed="right">
           <template #default="scope">
-            <div class="action-buttons">
-              <el-button size="small" @click.stop="handleViewDetail(scope.row)">
+            <div class="action-buttons-inline">
+              <el-button type="primary" link size="small" @click.stop="handleViewMonitor(scope.row)">
+                <el-icon><Monitor /></el-icon>
+                监控
+              </el-button>
+              <el-button type="primary" link size="small" @click.stop="handleViewDetail(scope.row)">
                 <el-icon><View /></el-icon>
                 详情
               </el-button>
-              <el-button size="small" @click.stop="handleCordon(scope.row)" :disabled="scope.row.isMaster">
+              <el-button type="warning" link size="small" @click.stop="handleCordon(scope.row)" :disabled="scope.row.isMaster">
                 <el-icon><Lock /></el-icon>
                 {{ scope.row.cordoned ? '取消隔离' : '隔离' }}
               </el-button>
-              <el-button size="small" type="danger" @click.stop="handleDrain(scope.row)" :disabled="scope.row.isMaster">
+              <el-button type="danger" link size="small" @click.stop="handleDrain(scope.row)" :disabled="scope.row.isMaster">
                 <el-icon><Remove /></el-icon>
                 排空
               </el-button>
@@ -430,134 +434,86 @@
                     </div>
                   </div>
                 </el-tab-pane>
-                <el-tab-pane label="实时监控" name="monitoring">
-                  <div class="monitor-container" v-if="activeTab === 'monitoring'">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                      <el-select v-model="selectedPrometheusId" placeholder="选择 Prometheus 实例" size="small" style="width: 200px;">
-                        <el-option v-for="inst in prometheusInstances" :key="inst.id" :label="inst.name" :value="inst.id" />
-                      </el-select>
-                      <el-button type="primary" size="small" @click="handleOpenCustomMonitorDialog(null)">
-                        <el-icon><Plus /></el-icon> 新增自定义监控图表
-                      </el-button>
-                    </div>
-                    
-                    <div v-if="selectedPrometheusId">
-                      <el-row :gutter="20">
-                        <el-col :span="12">
-                          <DynamicPromQLChart 
-                            :node-name="currentNode.name" 
-                            :prometheus-instance-id="parseInt(selectedPrometheusId)" 
-                            title="CPU 使用率" 
-                            chart-type="line"
-                            unit="%"
-                            color="#f56c6c"
-                            promql-template='min(100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle", instance="{{nodeName}}"}[5m])) * 100))'
-                            :hours="1" 
-                          />
-                        </el-col>
-                        <el-col :span="12">
-                          <DynamicPromQLChart 
-                            :node-name="currentNode.name" 
-                            :prometheus-instance-id="parseInt(selectedPrometheusId)" 
-                            title="内存使用率" 
-                            chart-type="line"
-                            unit="%"
-                            color="#409EFF"
-                            promql-template='(1 - (node_memory_MemAvailable_bytes{instance="{{nodeName}}"} / node_memory_MemTotal_bytes{instance="{{nodeName}}"})) * 100'
-                            :hours="1" 
-                          />
-                        </el-col>
-                      </el-row>
-
-                      <el-row :gutter="20" style="margin-top: 20px;" v-if="customMonitors.length === 0">
-                        <el-col :span="12">
-                          <DynamicPromQLChart 
-                            :node-name="currentNode.name" 
-                            :prometheus-instance-id="parseInt(selectedPrometheusId)" 
-                            title="网络接收速率 (示例)" 
-                            chart-type="line"
-                            unit="B/s"
-                            color="#67c23a"
-                            promql-template='sum(rate(node_network_receive_bytes_total{instance="{{nodeName}}"}[5m]))'
-                            :hours="1" 
-                          />
-                        </el-col>
-                        <el-col :span="12">
-                          <DynamicPromQLChart 
-                            :node-name="currentNode.name" 
-                            :prometheus-instance-id="parseInt(selectedPrometheusId)" 
-                            title="根目录磁盘使用率 (示例)" 
-                            chart-type="line"
-                            unit="%"
-                            color="#e6a23c"
-                            promql-template='100 - (node_filesystem_avail_bytes{mountpoint="/", instance="{{nodeName}}"} / node_filesystem_size_bytes{mountpoint="/", instance="{{nodeName}}"} * 100)'
-                            :hours="1" 
-                          />
-                        </el-col>
-                      </el-row>
-
-                      <!-- 自定义图表区 (Node级别) -->
-                      <el-divider v-if="customMonitors.length > 0" content-position="left">我的自定义大盘</el-divider>
-                      <el-row :gutter="20" style="margin-top: 20px;">
-                        <el-col :span="12" v-for="monitor in customMonitors" :key="monitor.id" style="margin-bottom: 20px;">
-                          <DynamicPromQLChart 
-                            :monitor-id="monitor.id"
-                            :node-name="currentNode.name"
-                            :prometheus-instance-id="parseInt(selectedPrometheusId)" 
-                            :title="monitor.title" 
-                            :chart-type="monitor.chart_type"
-                            :unit="monitor.unit_suffix"
-                            :color="monitor.color_theme"
-                            :promql-template="monitor.promql_template"
-                            :hours="1" 
-                            @edit="handleOpenCustomMonitorDialog"
-                            @delete="handleDeleteCustomMonitor"
-                          />
-                        </el-col>
-                      </el-row>
-
-                    </div>
-                    <el-empty v-else description="请先选择用于监控的 Prometheus 实例数据源" />
-                  </div>
-                </el-tab-pane>
               </el-tabs>
-
-              <!-- 新增/编辑自定义监控弹窗 -->
-              <el-dialog v-model="showMonitorDialog" :title="monitorForm.id ? '编辑自定义图表' : '新增自定义图表'" width="600px" append-to-body destroy-on-close>
-                <el-form :model="monitorForm" :rules="monitorRules" ref="monitorFormRef" label-width="120px">
-                  <el-form-item label="图表标题" prop="title">
-                    <el-input v-model="monitorForm.title" placeholder="如：系统负载均值" />
-                  </el-form-item>
-                  <el-form-item label="PromQL 模板" prop="promql_template">
-                    <el-input v-model="monitorForm.promql_template" type="textarea" :rows="3" placeholder="例如: node_load1{instance='{{nodeName}}'}" />
-                    <div style="font-size: 12px; color: #999; margin-top: 5px;">
-                      可用插值变量: <code>{{nodeName}}</code>
-                    </div>
-                  </el-form-item>
-                  <el-form-item label="图表类型" prop="chart_type">
-                    <el-radio-group v-model="monitorForm.chart_type">
-                      <el-radio label="line">折线图 (Line)</el-radio>
-                      <el-radio label="bar">柱状图 (Bar)</el-radio>
-                    </el-radio-group>
-                  </el-form-item>
-                  <el-form-item label="Y轴单位">
-                    <el-input v-model="monitorForm.unit_suffix" placeholder="如: %, MB, 负载 (可选)" />
-                  </el-form-item>
-                  <el-form-item label="主题颜色">
-                    <el-color-picker v-model="monitorForm.color_theme" show-alpha />
-                  </el-form-item>
-                </el-form>
-                <template #footer>
-                  <div class="dialog-footer">
-                    <el-button @click="showMonitorDialog = false">取消</el-button>
-                    <el-button type="primary" @click="handleSaveCustomMonitor" :loading="monitorSubmitting">保存</el-button>
-                  </div>
-                </template>
-              </el-dialog>
             </el-card>
           </el-col>
         </el-row>
       </div>
+    </el-dialog>
+
+    <!-- 节点监控抽屉 -->
+    <el-drawer v-model="showMonitorDrawer" title="节点实时监控" size="70%" destroy-on-close>
+      <div v-if="currentNode" class="monitor-container" style="padding: 0 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <div>
+            <span style="font-weight: bold; margin-right: 15px; font-size: 16px;">
+              <el-icon style="vertical-align: middle; margin-right: 5px;"><Monitor /></el-icon>
+              {{ currentNode.name }}
+            </span>
+            <el-select v-model="selectedPrometheusId" placeholder="选择 Prometheus 实例" size="small" style="width: 200px;">
+              <el-option v-for="inst in prometheusInstances" :key="inst.id" :label="inst.name" :value="inst.id" />
+            </el-select>
+          </div>
+          <el-button type="primary" size="small" @click="handleOpenCustomMonitorDialog(null)">
+            <el-icon><Plus /></el-icon> 新增自定义监控图表
+          </el-button>
+        </div>
+        
+        <div v-if="selectedPrometheusId">
+          <!-- 自定义图表区 (Node级别) -->
+          <el-row :gutter="20">
+            <el-col :span="12" v-for="monitor in customMonitors" :key="monitor.id" style="margin-bottom: 20px;">
+              <DynamicPromQLChart 
+                :monitor-id="monitor.id"
+                :node-name="currentNode.name"
+                :prometheus-instance-id="parseInt(selectedPrometheusId)" 
+                :title="monitor.title" 
+                :chart-type="monitor.chart_type"
+                :unit="monitor.unit_suffix"
+                :color="monitor.color_theme"
+                :promql-template="monitor.promql_template"
+                :hours="1" 
+                @edit="handleOpenCustomMonitorDialog"
+                @delete="handleDeleteCustomMonitor"
+              />
+            </el-col>
+          </el-row>
+          <el-empty v-if="customMonitors.length === 0" description="暂无图表，请点击右上角新增" />
+
+        </div>
+        <el-empty v-else description="请先选择用于监控的 Prometheus 实例数据源" />
+      </div>
+    </el-drawer>
+    <el-dialog v-model="showMonitorDialog" :title="monitorForm.id ? '编辑自定义图表' : '新增自定义图表'" width="600px" append-to-body destroy-on-close>
+      <el-form :model="monitorForm" :rules="monitorRules" ref="monitorFormRef" label-width="120px">
+        <el-form-item label="图表标题" prop="title">
+          <el-input v-model="monitorForm.title" placeholder="如：系统负载均值" />
+        </el-form-item>
+        <el-form-item label="PromQL 模板" prop="promql_template">
+          <el-input v-model="monitorForm.promql_template" type="textarea" :rows="3" placeholder="例如: node_load1{instance='{{nodeName}}'}" />
+          <div style="font-size: 12px; color: #999; margin-top: 5px;">
+            可用插值变量: <code>{{nodeName}}</code>
+          </div>
+        </el-form-item>
+        <el-form-item label="图表类型" prop="chart_type">
+          <el-radio-group v-model="monitorForm.chart_type">
+            <el-radio label="line">折线图 (Line)</el-radio>
+            <el-radio label="bar">柱状图 (Bar)</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="Y轴单位">
+          <el-input v-model="monitorForm.unit_suffix" placeholder="如: %, MB, 负载 (可选)" />
+        </el-form-item>
+        <el-form-item label="主题颜色">
+          <el-color-picker v-model="monitorForm.color_theme" show-alpha />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="showMonitorDialog = false">取消</el-button>
+          <el-button type="primary" @click="handleSaveCustomMonitor" :loading="monitorSubmitting">保存</el-button>
+        </div>
+      </template>
     </el-dialog>
 
     <!-- 添加标签对话框 -->
@@ -595,6 +551,7 @@ import DynamicPromQLChart from './components/DynamicPromQLChart.vue'
 const loading = ref(false)
 const refreshing = ref(false)
 const showDetailDialog = ref(false)
+const showMonitorDrawer = ref(false)
 const showAddLabelDialog = ref(false)
 const searchText = ref('')
 const statusFilter = ref('')
@@ -815,7 +772,28 @@ const handleViewDetail = async (node) => {
       networkPolicyAvailable: checkNetworkPolicy(response.data),
       podCIDR: getPodCIDR(response.data)
     }
+
+    // 重置标签页到默认选中状态
+    activeTab.value = 'labels'
     
+    loading.close()
+    showDetailDialog.value = true
+  } catch (error) {
+    ElMessage.error(`获取节点详情失败: ${error.message || error.response?.data?.message || '未知错误'}`)
+  }
+}
+
+const handleViewMonitor = async (node) => {
+  try {
+    const loading = ElMessage({
+      message: '正在获取监控配置...',
+      type: 'info',
+      duration: 0,
+      showClose: false
+    })
+    
+    currentNode.value = node
+
     // 自动加载 Prometheus 实例提供下拉选择
     if (prometheusInstances.value.length === 0) {
       const pRes = await getInstanceList({ page: 1, page_size: 100, type_name: 'prometheus' })
@@ -826,17 +804,14 @@ const handleViewDetail = async (node) => {
         }
       }
     }
-
-    // 重置标签页到默认选中状态
-    activeTab.value = 'labels'
     
     loading.close()
     // 获取当前用户的自定义监控配置 (Node 维度)
     await fetchCustomMonitors()
 
-    showDetailDialog.value = true
+    showMonitorDrawer.value = true
   } catch (error) {
-    ElMessage.error(`获取节点详情失败: ${error.message || error.response?.data?.message || '未知错误'}`)
+    ElMessage.error(`获取组件状态失败: ${error.message || error.response?.data?.message || '未知错误'}`)
   }
 }
 
@@ -1101,8 +1076,8 @@ const toggleAutoRefresh = () => {
 const fetchCustomMonitors = async () => {
   try {
     const res = await getCustomMonitors('node')
-    if (res && res.data) {
-      customMonitors.value = res.data
+    if (res && res.data && res.data.list) {
+      customMonitors.value = res.data.list
     } else {
       customMonitors.value = []
     }
@@ -1416,19 +1391,11 @@ onUnmounted(() => {
   color: #666;
 }
 
-.action-buttons {
+.action-buttons-inline {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  align-items: stretch;
-}
-
-.action-buttons .el-button {
-  margin: 0;
-  min-width: 60px;
-  padding: 5px 8px;
-  font-size: 12px;
-  height: auto;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
 }
 
 .monitor-container {

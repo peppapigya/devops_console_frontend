@@ -133,7 +133,34 @@ const fetchMetrics = async () => {
   }
 }
 
+// 工具函数：为任意颜色（hex/rgb/rgba）添加透明度
+const addAlpha = (color, opacity) => {
+  if (!color) return `rgba(64, 158, 255, ${opacity})`
+  // 处理 rgb / rgba
+  if (color.startsWith('rgb')) {
+    const raw = color.substring(color.indexOf('(') + 1, color.lastIndexOf(')'))
+    const parts = raw.split(',').map(s => s.trim())
+    return `rgba(${parts[0]}, ${parts[1]}, ${parts[2]}, ${opacity})`
+  }
+  // 处理 hex
+  let hex = color.replace('#', '')
+  if (hex.length === 3) {
+    hex = hex.split('').map(char => char + char).join('')
+  }
+  if (hex.length >= 6) {
+    const r = parseInt(hex.substring(0, 2), 16)
+    const g = parseInt(hex.substring(2, 4), 16)
+    const b = parseInt(hex.substring(4, 6), 16)
+    return `rgba(${r}, ${g}, ${b}, ${opacity})`
+  }
+  return `rgba(64, 158, 255, ${opacity})`
+}
+
 const chartOption = computed(() => {
+  if (!chartData.value || chartData.value.length === 0) {
+    return {}
+  }
+
   return {
     tooltip: {
       trigger: 'axis',
@@ -141,6 +168,7 @@ const chartOption = computed(() => {
       borderColor: props.color,
       textStyle: { color: '#e0e0e0' },
       formatter: (params) => {
+        if (!params || !params[0]) return ''
         return `${params[0].name}<br/>${params[0].marker} ${params[0].value} ${props.unit}`
       }
     },
@@ -168,8 +196,8 @@ const chartOption = computed(() => {
           color: {
             type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
             colorStops: [
-              { offset: 0, color: `${props.color}40` },
-              { offset: 1, color: `${props.color}00` }
+              { offset: 0, color: addAlpha(props.color, 0.25) },
+              { offset: 1, color: addAlpha(props.color, 0) }
             ]
           }
         } : undefined,
