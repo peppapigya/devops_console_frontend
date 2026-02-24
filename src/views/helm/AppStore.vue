@@ -114,8 +114,18 @@
              </el-col>
              <el-col :span="24">
                 <el-form-item label="自定义 Values">
-                   <div class="flex justify-end mb-2 w-full">
-                      <el-button size="small" @click="loadDefaultValues" link type="primary">加载官方示例</el-button>
+                   <div class="flex justify-between items-center mb-2 w-full">
+                       <el-upload
+                         class="upload-btn-fix"
+                         action=""
+                         :auto-upload="false"
+                         :show-file-list="false"
+                         accept=".yaml,.yml"
+                         :on-change="handleLocalFileUpload"
+                       >
+                         <el-button size="small" type="primary" :icon="Upload">上传本地配置</el-button>
+                       </el-upload>
+                      <el-button size="small" @click="loadDefaultValues" link type="primary" :loading="loadingValues">加载官方示例</el-button>
                    </div>
                    <el-input
                      v-model="customValues"
@@ -141,13 +151,14 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Search, Box, Shop } from '@element-plus/icons-vue'
+import { Search, Box, Shop, Upload } from '@element-plus/icons-vue'
 import { getHelmRepos } from '@/api/helm'
 import { getHelmCharts, getChartVersions, installHelmChart, getChartDefaultValues } from '@/api/helm'
 import { getSelectedInstanceId } from '@/stores/instanceStore'
 
 const loading = ref(false)
 const installing = ref(false)
+const loadingValues = ref(false)
 const repoList = ref([])
 const chartList = ref([])
 const chartVersions = ref([])
@@ -210,6 +221,7 @@ const loadDefaultValues = async () => {
     return
   }
   
+  loadingValues.value = true
   try {
     const res = await getChartDefaultValues(
       selectedChart.value.name,
@@ -220,8 +232,24 @@ const loadDefaultValues = async () => {
     ElMessage.success('已加载官方默认配置')
   } catch (error) {
     console.error(error)
-    ElMessage.error('加载失败')
+    ElMessage.error('加载失败，可能由于网络超时或官方仓库无响应')
+  } finally {
+    loadingValues.value = false
   }
+}
+
+// 处理本地 YAML 文件上传
+const handleLocalFileUpload = (file) => {
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    try {
+      customValues.value = e.target.result
+      ElMessage.success('本地配置已加载')
+    } catch (err) {
+      ElMessage.error('文件读取失败')
+    }
+  }
+  reader.readAsText(file.raw)
 }
 
 // 搜索防抖
@@ -246,17 +274,34 @@ const handleChartClick = async (chart) => {
   // 获取版本列表
   try {
     const res = await getChartVersions(chart.name, chart.repo_id)
-    chartVersions.value = res.data.versions || []
+    const versions = res.data.versions || []
+    
+    // Sort versions descending (latest first) based on semantic versioning
+    chartVersions.value = versions.sort((a, b) => {
+      const vA = a.version.split('.').map(n => parseInt(n, 10) || 0)
+      const vB = b.version.split('.').map(n => parseInt(n, 10) || 0)
+      for (let i = 0; i < Math.max(vA.length, vB.length); i++) {
+        const numA = vA[i] || 0
+        const numB = vB[i] || 0
+        if (numA !== numB) {
+          return numB - numA // Descending
+        }
+      }
+      return 0
+    })
   } catch (error) {
     console.error(error)
     chartVersions.value = []
   }
 
+  // 获取最新的版本号 (排序后的第一个)
+  const latestVersion = chartVersions.value.length > 0 ? chartVersions.value[0].version : chart.version
+
   // 初始化安装表单
   installForm.value = {
     release_name: chart.name.toLowerCase(),
     namespace: 'default',
-    chart_version: chart.version,
+    chart_version: latestVersion,
     chart_name: chart.name,
     repo_name: chart.repo_name,
     instance_id: getSelectedInstanceId(),
@@ -419,13 +464,15 @@ onMounted(() => {
     align-items: center;
 }
 
-.version-tag {
-    font-size: 12px;
-    color: var(--text-placeholder);
-}
-
 .values-textarea :deep(.el-textarea__inner) {
     font-family: 'Consolas', 'Monaco', monospace;
     font-size: 13px;
+}
+
+.upload-btn-fix {
+  display: inline-block;
+}
+.upload-btn-fix :deep(.el-upload) {
+  display: block;
 }
 </style>

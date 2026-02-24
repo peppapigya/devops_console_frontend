@@ -222,15 +222,19 @@ const formRef = ref()
 const saving = ref(false)
 const testing = ref(false)
 const addressProtocol = ref('http')
-const instanceTypes = ref([
-    { label: 'Elasticsearch', value: 'elasticsearch', icon: markRaw(Monitor), color: '#005571', defaultPort: 9200 },
-    { label: 'Kibana', value: 'kibana', icon: markRaw(DataLine), color: '#005571', defaultPort: 5601 },
-    { label: 'Logstash', value: 'logstash', icon: markRaw(DocumentCopy), color: '#005571', defaultPort: 9600 },
-    { label: 'Kubernetes', value: 'kubernetes', icon: markRaw(Box), color: '#326CE5', defaultPort: 6443 },
-    { label: 'Filebeat', value: 'filebeat', icon: markRaw(DocumentCopy), color: '#005571', defaultPort: 5066 },
-    { label: 'Metricbeat', value: 'metricbeat', icon: markRaw(DocumentCopy), color: '#005571', defaultPort: 5067 },
-    { label: 'APM', value: 'apm', icon: markRaw(WarningFilled), color: '#005571', defaultPort: 8200 },
-])
+const instanceTypes = ref([]) // 改为从后端动态获取
+
+// 固定图标和颜色映射
+const typeDisplayConfig = {
+    'elasticsearch': { icon: markRaw(Monitor), color: '#005571', defaultPort: 9200 },
+    'kibana': { icon: markRaw(DataLine), color: '#005571', defaultPort: 5601 },
+    'logstash': { icon: markRaw(DocumentCopy), color: '#005571', defaultPort: 9600 },
+    'kubernetes': { icon: markRaw(Box), color: '#326CE5', defaultPort: 6443 },
+    'prometheus': { icon: markRaw(DataLine), color: '#e6a23c', defaultPort: 9090 },
+    'filebeat': { icon: markRaw(DocumentCopy), color: '#005571', defaultPort: 5066 },
+    'metricbeat': { icon: markRaw(DocumentCopy), color: '#005571', defaultPort: 5067 },
+    'apm': { icon: markRaw(WarningFilled), color: '#005571', defaultPort: 8200 }
+}
 
 // 判断是否为编辑模式
 const isEdit = computed(() => !!route.params.id)
@@ -307,12 +311,24 @@ const handleSave = async () => {
     
     saving.value = true
     try {
-        const payload = { ...formData }
-        if (addressProtocol.value === 'https') {
-             // Logic to prepend https if not present, or handle it via a separate field if backend expects it
-             payload.httpsEnabled = true
-        } else {
-             payload.httpsEnabled = false
+        const typeId = getInstanceTypeId(formData.instanceType)
+        if (!typeId) {
+            throw new Error('未找到该实例类型')
+        }
+
+        const payload = { 
+            id: formData.id,
+            instance_type_id: typeId,
+            name: formData.name,
+            address: formData.address,
+            https_enabled: addressProtocol.value === 'https',
+            skip_ssl_verify: formData.skipSslVerify,
+            status: 'active',
+            auth_configs: {
+                auth_type: formData.authType,
+                config_key: 'default',
+                config_value: getAuthConfigValue()
+            }
         }
         
         if (isEdit.value) {
@@ -322,7 +338,7 @@ const handleSave = async () => {
             await addInstance(payload)
             ElMessage.success('创建成功')
         }
-        router.push('/es/instances')
+        router.push('/instances')
     } catch (e) {
         ElMessage.error(e.message || '保存失败')
     } finally {
@@ -333,7 +349,21 @@ const handleSave = async () => {
 const handleTestConnection = async () => {
     testing.value = true
     try {
-        await testConnection(formData)
+        const typeId = getInstanceTypeId(formData.instanceType)
+        const payload = { 
+            id: formData.id,
+            instance_type_id: typeId,
+            name: formData.name,
+            address: formData.address,
+            https_enabled: addressProtocol.value === 'https',
+            skip_ssl_verify: formData.skipSslVerify,
+            auth_configs: {
+                auth_type: formData.authType,
+                config_key: 'default',
+                config_value: getAuthConfigValue()
+            }
+        }
+        await testConnection(payload)
         ElMessage.success('连接测试成功')
     } catch (e) {
         ElMessage.error('连接测试失败: ' + (e.message || '网络错误'))
@@ -343,9 +373,8 @@ const handleTestConnection = async () => {
 }
 
 const getInstanceTypeId = (typeName) => {
-    // Mock logic: map string to ID if backend requires ID
-    // In real app, this might fetch from a store or types API
-    return 1 
+    const type = instanceTypes.value.find(t => t.value === typeName)
+    return type ? type.id : null
 }
 
 const getAuthConfigValue = () => {
@@ -358,7 +387,30 @@ const getAuthConfigValue = () => {
     }
 }
 
+const loadInstanceTypes = async () => {
+    try {
+        const res = await getInstanceTypes()
+        const types = res.data?.instance_types || res.data
+        if (types && Array.isArray(types)) {
+            instanceTypes.value = types.map(type => {
+                const config = typeDisplayConfig[type.type_name] || {}
+                return {
+                    id: type.id,
+                    label: type.display_name || type.type_name,
+                    value: type.type_name,
+                    icon: config.icon || markRaw(Monitor),
+                    color: config.color || '#606266',
+                    defaultPort: config.defaultPort || 80
+                }
+            })
+        }
+    } catch (e) {
+        ElMessage.error('加载实例类型失败')
+    }
+}
+
 onMounted(async () => {
+    await loadInstanceTypes()
     if (isEdit.value) {
         const id = route.params.id
         try {
@@ -367,7 +419,10 @@ onMounted(async () => {
             // Parse address protocol
             if (formData.httpsEnabled) addressProtocol.value = 'https'
             
-            // Parse auth config if needed
+            // FIXME Backend instance mapping back to Flat form
+            if (res.data.instance_type?.type_name) {
+                formData.instanceType = res.data.instance_type.type_name
+            }
         } catch (e) {
             ElMessage.error('加载实例详情失败')
         }

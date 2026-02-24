@@ -348,6 +348,7 @@ const updateTypeChart = (allInstances) => {
     'filebeat': '#f44336',
     'metricbeat': '#9c27b0',
     'apm': '#795548',
+    'prometheus': '#e6522c',
     'beats': '#607d8b',
     'other': '#9e9e9e'
   }

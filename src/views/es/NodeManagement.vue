@@ -251,7 +251,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Refresh, Connection, Warning, CircleCheck, CircleClose } from '@element-plus/icons-vue'
-import { getNodes, getNodeStats, restartNode } from '@/api/es/nodes.js'
+import { getNodes, getNodeStats, restartNode } from '@/api/es/node.js'
 import { getSelectedInstanceId } from '@/stores/instanceStore'
 
 // 状态和数据

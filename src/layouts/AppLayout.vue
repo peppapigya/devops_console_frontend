@@ -437,6 +437,10 @@ const selectInstance = (instanceId) => {
     setSelectedInstance(instance)
     ElMessage.success(`已切换到: ${instance.name}`)
     // Reset route logic if needed
+    if (instance.instance_type === 'prometheus') {
+      router.push('/instances')
+      return
+    }
     const menus = allMenuRoutes.value
     if (menus.length > 0) {
        router.push(menus[0].path)
@@ -467,9 +471,18 @@ const fetchInstances = async () => {
     instanceList.value = listData.data || []
     
     if (instanceList.value.length > 0 && !selectedInstance.value) {
-      selectedInstance.value = instanceList.value[0].id
-      const instance = instanceList.value[0]
-      setSelectedInstance(instance)
+      // 优先选择 elasticsearch 或 kubernetes，避免默认选中 prometheus
+      const preferType = route.path.startsWith('/es') ? 'elasticsearch' : (route.path.startsWith('/k8s') ? 'kubernetes' : null)
+      let defaultInstance = instanceList.value.find(inst => inst.instance_type === preferType)
+      if (!defaultInstance) {
+          defaultInstance = instanceList.value.find(inst => inst.instance_type === 'elasticsearch' || inst.instance_type === 'kubernetes')
+      }
+      if (!defaultInstance) {
+          defaultInstance = instanceList.value[0]
+      }
+      
+      selectedInstance.value = defaultInstance.id
+      setSelectedInstance(defaultInstance)
     }
   } catch (error) {
     console.error('获取实例列表失败:', error)

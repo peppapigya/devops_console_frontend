@@ -36,6 +36,7 @@
             <el-option label="Filebeat" value="filebeat" />
             <el-option label="Metricbeat" value="metricbeat" />
             <el-option label="APM" value="apm" />
+            <el-option label="Prometheus" value="prometheus" />
         </el-select>
         <el-select v-model="statusFilter" placeholder="状态筛选" clearable class="filter-item w-32">
             <el-option label="活跃" value="active" />
@@ -223,7 +224,8 @@ const getTypeIcon = (type) => {
     logstash: DocumentCopy,
     filebeat: DocumentCopy,
     metricbeat: DocumentCopy,
-    apm: WarningFilled
+    apm: WarningFilled,
+    prometheus: DataLine
   }
   return icons[type] || Monitor
 }
@@ -235,7 +237,8 @@ const getTypeColor = (type) => {
     logstash: '#ff9800',
     filebeat: '#f44336',
     metricbeat: '#9c27b0',
-    apm: '#795548'
+    apm: '#795548',
+    prometheus: '#e6522c'
   }
   return colors[type] || '#666'
 }
@@ -247,7 +250,8 @@ const getTypeLabel = (type) => {
     logstash: 'Logstash',
     filebeat: 'Filebeat',
     metricbeat: 'Metricbeat',
-    apm: 'APM'
+    apm: 'APM',
+    prometheus: 'Prometheus'
   }
   return labels[type] || type
 }
@@ -260,7 +264,8 @@ const getTypeTagType = (type) => {
     filebeat: 'danger',
     metricbeat: 'info',
     apm: 'info',
-    kubernetes: 'primary'
+    kubernetes: 'primary',
+    prometheus: 'danger'
   }
   return types[type] || 'info'
 }

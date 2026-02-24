@@ -1,10 +1,10 @@
 import axios from 'axios'
-import {showError} from "@/utils/errorPopup.js";
+import { showError } from "@/utils/errorPopup.js";
 
 // 创建axios实例
 const api = axios.create({
   baseURL: '/api/v1', // 直接使用相对路径，由nginx代理
-  timeout: 10000,
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json'
   }
@@ -43,7 +43,7 @@ api.interceptors.response.use(
           localStorage.removeItem('access_token')
           localStorage.removeItem('refresh_token')
         }
-        showError(data.message || '登录已过期，请重新登录','登录已过期')
+        showError(data.message || '登录已过期，请重新登录', '登录已过期')
       }
       throw new Error(data.message || '请求失败')
     }

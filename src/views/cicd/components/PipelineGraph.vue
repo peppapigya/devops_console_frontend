@@ -18,7 +18,8 @@
           @click="onNodeClick(data)"
         >
           <div class="node-icon">
-            <el-icon v-if="data.status === 'Succeeded' || data.status === 'Running'"><Check /></el-icon>
+            <el-icon v-if="data.status === 'Succeeded'"><Check /></el-icon>
+            <el-icon v-else-if="data.status === 'Running'" class="is-loading"><Loading /></el-icon>
             <el-icon v-else-if="data.status === 'Failed'"><Close /></el-icon>
             <el-icon v-else><MoreFilled /></el-icon>
           </div>
@@ -41,7 +42,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { VueFlow, useVueFlow, Handle } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
-import { Check, Close, MoreFilled } from '@element-plus/icons-vue'
+import { Check, Close, MoreFilled, Loading } from '@element-plus/icons-vue'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/controls/dist/style.css'
 
@@ -214,8 +215,8 @@ const onNodeClick = (data) => {
 .node-failed .node-icon { background: #fef0f0; color: #f56c6c; }
 .node-failed { border-left: 3px solid #f56c6c; }
 
-.node-running .node-icon { background: #f0f9eb; color: #67c23a; }
-.node-running { border-left: 3px solid #67c23a; }
+.node-running .node-icon { background: #ecf5ff; color: #409eff; }
+.node-running { border-left: 3px solid #409eff; }
 
 .node-pending .node-icon { background: #f4f4f5; color: #909399; }
 </style>
