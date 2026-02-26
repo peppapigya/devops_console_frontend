@@ -381,6 +381,47 @@ const dashboardRoutes = [
       instanceType: 'kubernetes'
     }
   },
+  // RBAC 权限管理
+  {
+    path: 'k8s/role',
+    name: 'RoleManagement',
+    component: () => import('../views/k8s/RoleManagement.vue'),
+    meta: {
+      title: 'Role管理',
+      icon: 'Lock',
+      instanceType: 'kubernetes'
+    }
+  },
+  {
+    path: 'k8s/clusterrole',
+    name: 'ClusterRoleManagement',
+    component: () => import('../views/k8s/ClusterRoleManagement.vue'),
+    meta: {
+      title: 'ClusterRole管理',
+      icon: 'Lock',
+      instanceType: 'kubernetes'
+    }
+  },
+  {
+    path: 'k8s/rolebinding',
+    name: 'RoleBindingManagement',
+    component: () => import('../views/k8s/RoleBindingManagement.vue'),
+    meta: {
+      title: 'RoleBinding管理',
+      icon: 'Connection',
+      instanceType: 'kubernetes'
+    }
+  },
+  {
+    path: 'k8s/clusterrolebinding',
+    name: 'ClusterRoleBindingManagement',
+    component: () => import('../views/k8s/ClusterRoleBindingManagement.vue'),
+    meta: {
+      title: 'ClusterRoleBinding管理',
+      icon: 'Connection',
+      instanceType: 'kubernetes'
+    }
+  },
   {
     path: 'settings',
     name: 'Settings',

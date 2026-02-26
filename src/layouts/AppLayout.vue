@@ -221,7 +221,7 @@ import {
   Connection, Plus, List, Search, Refresh, Edit, ArrowRight,
   DataLine, WarningFilled, Delete, MoreFilled, Box, Files, Folder, FolderOpened, DataBoard, Timer,
   Expand, Fold, CaretBottom, Cpu, Coin, Ticket, Share, Operation, Document, Key, BellFilled, Histogram,
-  Top, Right
+  Top, Right, Lock, UserFilled
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -343,6 +343,16 @@ const allMenuRoutes = computed(() => {
         {path: '/helm/repos', meta: {title: 'Helm仓库', icon: 'Box', instanceType: 'kubernetes'}},
         {path: '/helm/store', meta: {title: '应用商店', icon: 'ShoppingCart', instanceType: 'kubernetes'}},
         {path: '/helm/installed', meta: {title: '已安装应用', icon: 'Histogram', instanceType: 'kubernetes'}},
+      ]
+    },
+    {
+      path: 'k8s-rbac',
+      meta: {title: '权限管理', icon: 'Lock'},
+      children: [
+        {path: '/k8s/role', meta: {title: 'Role', icon: 'Lock', instanceType: 'kubernetes'}},
+        {path: '/k8s/clusterrole', meta: {title: 'ClusterRole', icon: 'Lock', instanceType: 'kubernetes'}},
+        {path: '/k8s/rolebinding', meta: {title: 'RoleBinding', icon: 'Connection', instanceType: 'kubernetes'}},
+        {path: '/k8s/clusterrolebinding', meta: {title: 'ClusterRoleBinding', icon: 'Connection', instanceType: 'kubernetes'}},
       ]
     }
   ]
