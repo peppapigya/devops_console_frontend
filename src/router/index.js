@@ -1,533 +1,96 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-// Dashboard Layout (Authenticated)
-const dashboardRoutes = [
-  {
-    path: '', // Default child for /
-    name: 'Dashboard',
-    component: () => import('../views/Dashboard.vue'),
-    meta: {
-      title: '首页',
-      icon: 'House'
-    }
-  },
-  {
-    path: 'es', // Note: removed leading slash for children
-    name: 'EsDashboard',
-    component: () => import('../views/es/EsDashboard.vue'),
-    meta: {
-      title: 'ES控制台',
-      icon: 'Monitor',
-      instanceType: 'elasticsearch'
-    }
-  },
-  {
-    path: 'instances',
-    name: 'InstanceList',
-    component: () => import('../views/es/InstanceManagement.vue'),
-    meta: {
-      title: '实例管理',
-      icon: 'Monitor'
-    }
-  },
-  {
-    path: 'instances/detail/:id',
-    name: 'InstanceDetail',
-    component: () => import('../views/es/InstanceDetail.vue'),
-    meta: {
-      title: '实例详情',
-      icon: 'View'
-    }
-  },
-  {
-    path: 'instances/add',
-    name: 'AddInstance',
-    component: () => import('../views/es/InstanceForm.vue'),
-    meta: {
-      title: '添加实例',
-      icon: 'Plus'
-    }
-  },
-  {
-    path: 'instances/edit/:id',
-    name: 'EditInstance',
-    component: () => import('../views/es/InstanceForm.vue'),
-    meta: {
-      title: '编辑实例',
-      icon: 'Edit'
-    }
-  },
-  // ES 模块路由
-  {
-    path: 'nodes',
-    name: 'ESNodeManagement',
-    component: () => import('../views/es/NodeManagement.vue'),
-    meta: {
-      title: '节点管理',
-      icon: 'Connection',
-      instanceType: 'elasticsearch'
-    }
-  },
-  {
-    path: 'indices',
-    name: 'IndexManagement',
-    component: () => import('../views/es/IndexManagement.vue'),
-    meta: {
-      title: '索引管理',
-      icon: 'DocumentCopy',
-      instanceType: 'elasticsearch'
-    }
-  },
-  {
-    path: 'shards',
-    name: 'ShardManagement',
-    component: () => import('../views/es/ShardManagement.vue'),
-    meta: {
-      title: '分片管理',
-      icon: 'Grid',
-      instanceType: 'elasticsearch'
-    }
-  },
-  {
-    path: 'backup',
-    name: 'BackupManagement',
-    component: () => import('../views/es/BackupManagement.vue'),
-    meta: {
-      title: '备份管理',
-      icon: 'FolderOpened',
-      instanceType: 'elasticsearch'
-    }
-  },
-  {
-    path: 'data',
-    name: 'DataManagement',
-    component: () => import('../views/es/DataManagement.vue'),
-    meta: {
-      title: '数据管理',
-      icon: 'DataBoard',
-      instanceType: 'elasticsearch'
-    }
-  },
-  // K8s 模块路由
-  {
-    path: 'k8s',
-    name: 'K8sDashboard',
-    component: () => import('../views/k8s/K8sDashboard.vue'),
-    meta: {
-      title: 'K8s控制台',
-      icon: 'Monitor',
-      instanceType: 'kubernetes'
-    }
-  },
-
-  {
-    path: 'k8s/cluster/:clusterName',
-    name: 'ClusterDetail',
-    component: () => import('../views/k8s/ClusterDetail.vue'),
-    meta: {
-      title: '集群详情',
-      icon: 'View',
-      instanceType: 'kubernetes'
-    }
-  },
-  {
-    path: 'k8s/node',
-    name: 'K8sNodeManagement',
-    component: () => import('../views/k8s/NodeManagement.vue'),
-    meta: {
-      title: '节点管理',
-      icon: 'Monitor',
-      instanceType: 'kubernetes'
-    }
-  },
-  {
-    path: 'k8s/pod',
-    name: 'PodManagement',
-    component: () => import('../views/k8s/PodManagement.vue'),
-    meta: {
-      title: 'Pod管理',
-      icon: 'Box',
-      instanceType: 'kubernetes'
-    }
-  },
-  {
-    path: 'k8s/deployment',
-    name: 'DeploymentManagement',
-    component: () => import('../views/k8s/DeploymentManagement.vue'),
-    meta: {
-      title: 'Deployment管理',
-      icon: 'Files',
-      instanceType: 'kubernetes'
-    }
-  },
-  {
-    path: 'k8s/namespace',
-    name: 'NamespaceManagement',
-    component: () => import('../views/k8s/NamespaceManagement.vue'),
-    meta: {
-      title: '命名空间管理',
-      icon: 'Folder',
-      instanceType: 'kubernetes'
-    }
-  },
-  {
-    path: 'k8s/service',
-    name: 'ServiceManagement',
-    component: () => import('../views/k8s/ServiceManagement.vue'),
-    meta: {
-      title: 'Service管理',
-      icon: 'Connection',
-      instanceType: 'kubernetes'
-    }
-  },
-  {
-    path: 'k8s/ingress',
-    name: 'IngressManagement',
-    component: () => import('../views/k8s/IngressManagement.vue'),
-    meta: {
-      title: 'Ingress管理',
-      icon: 'Share',
-      instanceType: 'kubernetes'
-    }
-  },
-  {
-    path: 'k8s/ingressclass',
-    name: 'IngressClassManagement',
-    component: () => import('../views/k8s/IngressClassManagement.vue'),
-    meta: {
-      title: 'IngressClass管理',
-      icon: 'Operation',
-      instanceType: 'kubernetes'
-    }
-  },
-  {
-    path: 'k8s/configmap',
-    name: 'ConfigMapManagement',
-    component: () => import('../views/k8s/ConfigMapManagement.vue'),
-    meta: {
-      title: 'ConfigMap管理',
-      icon: 'Document',
-      instanceType: 'kubernetes'
-    }
-  },
-  {
-    path: 'k8s/secret',
-    name: 'SecretManagement',
-    component: () => import('../views/k8s/SecretManagement.vue'),
-    meta: {
-      title: 'Secret管理',
-      icon: 'Key',
-      instanceType: 'kubernetes'
-    }
-  },
-  {
-    path: 'k8s/event',
-    name: 'EventManagement',
-    component: () => import('../views/k8s/EventManagement.vue'),
-    meta: {
-      title: '事件管理',
-      icon: 'BellFilled',
-      instanceType: 'kubernetes'
-    }
-  },
-  {
-    path: 'k8s/cronjob',
-    name: 'CronJobManagement',
-    component: () => import('../views/k8s/CronJobManagement.vue'),
-    meta: {
-      title: 'CronJob管理',
-      icon: 'Timer',
-      instanceType: 'kubernetes'
-    }
-  },
-  {
-    path: 'k8s/daemonset',
-    name: 'DaemonSetManagement',
-    component: () => import('../views/k8s/DaemonSetManagement.vue'),
-    meta: {
-      title: 'DaemonSet管理',
-      icon: 'Monitor',
-      instanceType: 'kubernetes'
-    }
-  },
-  {
-    path: 'k8s/replicaset',
-    name: 'ReplicaSetManagement',
-    component: () => import('../views/k8s/ReplicaSetManagement.vue'),
-    meta: {
-      title: 'ReplicaSet管理',
-      icon: 'CopyDocument',
-      instanceType: 'kubernetes'
-    }
-  },
-  {
-    path: 'k8s/rc',
-    name: 'ReplicationControllerManagement',
-    component: () => import('../views/k8s/ReplicationControllerManagement.vue'),
-    meta: {
-      title: 'RC管理',
-      icon: 'CopyDocument',
-      instanceType: 'kubernetes'
-    }
-  },
-  {
-    path: 'k8s/crd',
-    name: 'CrdManagement',
-    component: () => import('../views/k8s/CrdManagement.vue'),
-    meta: {
-      title: 'CRD管理',
-      icon: 'Cpu',
-      instanceType: 'kubernetes'
-    }
-  },
-  {
-    path: 'k8s/vpa',
-    name: 'VpaManagement',
-    component: () => import('../views/k8s/VpaManagement.vue'),
-    meta: {
-      title: 'VPA管理',
-      icon: 'Top',
-      instanceType: 'kubernetes'
-    }
-  },
-  {
-    path: 'k8s/hpa',
-    name: 'HpaManagement',
-    component: () => import('../views/k8s/HpaManagement.vue'),
-    meta: {
-      title: 'HPA管理',
-      icon: 'Right',
-      instanceType: 'kubernetes'
-    }
-  },
-  {
-    path: 'k8s/operator',
-    name: 'OperatorManagement',
-    component: () => import('../views/k8s/OperatorManagement.vue'),
-    meta: {
-      title: 'Operator管理',
-      icon: 'Box',
-      instanceType: 'kubernetes'
-    }
-  },
-  // Helm 应用商店
-  {
-    path: 'helm/repos',
-    name: 'HelmRepoManagement',
-    component: () => import('../views/helm/RepoManagement.vue'),
-    meta: {
-      title: 'Helm仓库',
-      icon: 'Box',
-      instanceType: 'kubernetes'
-    }
-  },
-  {
-    path: 'helm/store',
-    name: 'HelmAppStore',
-    component: () => import('../views/helm/AppStore.vue'),
-    meta: {
-      title: 'Helm应用商店',
-      icon: 'ShoppingCart',
-      instanceType: 'kubernetes'
-    }
-  },
-  {
-    path: 'helm/installed',
-    name: 'HelmInstalledApps',
-    component: () => import('../views/helm/InstalledApps.vue'),
-    meta: {
-      title: '已安装应用',
-      icon: 'Histogram',
-      instanceType: 'kubernetes'
-    }
-  },
-  {
-    path: 'k8s/job',
-    name: 'JobManagement',
-    component: () => import('../views/k8s/JobManagement.vue'),
-    meta: {
-      title: 'Job管理',
-      icon: 'List',
-      instanceType: 'kubernetes'
-    }
-  },
-  {
-    path: 'k8s/pv',
-    name: 'PvManagement',
-    component: () => import('../views/k8s/PvManagement.vue'),
-    meta: {
-      title: 'PV管理',
-      icon: 'Coin',
-      instanceType: 'kubernetes'
-    }
-  },
-  {
-    path: 'k8s/pvc',
-    name: 'PvcManagement',
-    component: () => import('../views/k8s/PvcManagement.vue'),
-    meta: {
-      title: 'PVC管理',
-      icon: 'Ticket',
-      instanceType: 'kubernetes'
-    }
-  },
-  {
-    path: 'k8s/storageclass',
-    name: 'StorageClassManagement',
-    component: () => import('../views/k8s/StorageClassManagement.vue'),
-    meta: {
-      title: 'SC管理',
-      icon: 'Box',
-      instanceType: 'kubernetes'
-    }
-  },
-  // RBAC 权限管理
-  {
-    path: 'k8s/role',
-    name: 'RoleManagement',
-    component: () => import('../views/k8s/RoleManagement.vue'),
-    meta: {
-      title: 'Role管理',
-      icon: 'Lock',
-      instanceType: 'kubernetes'
-    }
-  },
-  {
-    path: 'k8s/clusterrole',
-    name: 'ClusterRoleManagement',
-    component: () => import('../views/k8s/ClusterRoleManagement.vue'),
-    meta: {
-      title: 'ClusterRole管理',
-      icon: 'Lock',
-      instanceType: 'kubernetes'
-    }
-  },
-  {
-    path: 'k8s/rolebinding',
-    name: 'RoleBindingManagement',
-    component: () => import('../views/k8s/RoleBindingManagement.vue'),
-    meta: {
-      title: 'RoleBinding管理',
-      icon: 'Connection',
-      instanceType: 'kubernetes'
-    }
-  },
-  {
-    path: 'k8s/clusterrolebinding',
-    name: 'ClusterRoleBindingManagement',
-    component: () => import('../views/k8s/ClusterRoleBindingManagement.vue'),
-    meta: {
-      title: 'ClusterRoleBinding管理',
-      icon: 'Connection',
-      instanceType: 'kubernetes'
-    }
-  },
-  {
-    path: 'settings',
-    name: 'Settings',
-    component: () => import('../views/es/Settings.vue'),
-    meta: {
-      title: '系统设置',
-      icon: 'Setting'
-    }
-  },
-  // CI/CD Module Routes
-  {
-    path: 'cicd',
-    redirect: '/cicd/pipelines',
-    meta: { title: 'CI/CD' } // Add meta if needed for breadcrumbs
-  },
-  {
-    path: 'cicd/pipelines',
-    name: 'PipelineList',
-    component: () => import('../views/cicd/PipelineList.vue'),
-    meta: {
-      title: '流水线',
-      icon: 'Cpu',
-      instanceType: 'cicd' // Special type or global
-    }
-  },
-  {
-    path: 'cicd/pipelines/create',
-    name: 'PipelineCreate',
-    component: () => import('../views/cicd/PipelineEditor.vue'),
-    meta: {
-      title: '新建流水线',
-      hideInMenu: true
-    }
-  },
-  {
-    path: 'cicd/pipelines/:id/edit',
-    name: 'PipelineEdit',
-    component: () => import('../views/cicd/PipelineEditor.vue'),
-    meta: {
-      title: '编辑流水线',
-      hideInMenu: true
-    }
-  },
-  {
-    path: 'cicd/pipelines/:id/runs',
-    name: 'PipelineRunList',
-    component: () => import('../views/cicd/PipelineRunList.vue'),
-    meta: {
-      title: '运行历史',
-      hideInMenu: true
-    }
-  },
-  {
-    path: 'cicd/pipelines/:id/runs/:runId',
-    name: 'PipelineRunDetail',
-    component: () => import('../views/cicd/PipelineRunDetail.vue'),
-    meta: {
-      title: '执行详情',
-      hideInMenu: true
-    }
-  }
-]
-
+// ============================================================
+// 静态路由（无需登录/鉴权的基础路由）
+// 所有业务路由通过动态路由 (router.addRoute) 在登录后按权限注册
+// ============================================================
 const routes = [
   {
     path: '/login',
     name: 'Login',
     component: () => import('../views/system/login/index.vue'),
-    meta: {
-      title: 'Login',
-      title: '登录'
-    }
+    meta: { title: '登录', hidden: true }
   },
   {
+    // 已认证用户的根布局，name='AppLayout' 供 addRoute 使用
     path: '/',
+    name: 'AppLayout',
     component: () => import('../layouts/AppLayout.vue'),
-    children: dashboardRoutes
+    children: [
+      {
+        path: '',
+        name: 'Dashboard',
+        component: () => import('../views/Dashboard.vue'),
+        meta: { title: '首页', icon: 'House' }
+      }
+    ]
+  },
+  // 不匹配时的 404
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    component: () => import('../views/404.vue'),
+    meta: { hidden: true }
   }
 ]
 
 const router = createRouter({
   history: createWebHistory(),
-  routes
+  routes,
+  scrollBehavior: () => ({ top: 0 })
 })
 
-// 添加路由错误处理
-router.onError((error) => {
-  console.error('Router error:', error)
-})
-
-// 路由守卫
-router.beforeEach((to, from, next) => {
+// ============================================================
+// 路由守卫 —— 动态路由核心入口
+// ============================================================
+router.beforeEach(async (to, from, next) => {
   // 设置页面标题
-  if (to.meta.title) {
+  if (to.meta?.title) {
     document.title = `${to.meta.title} - DevOps Console`
   }
 
-  // Auth Guard
   const token = localStorage.getItem('access_token')
-  if (to.path !== '/login' && !token) {
-    next('/login')
-  } else if (to.path === '/login' && token) {
+
+  // 未登录
+  if (!token) {
+    if (to.path === '/login') {
+      next()
+    } else {
+      next(`/login?redirect=${encodeURIComponent(to.fullPath)}`)
+    }
+    return
+  }
+
+  // 已登录访问登录页，直接去首页
+  if (to.path === '/login') {
     next('/')
+    return
+  }
+
+  // 动态路由是否已加载
+  const { usePermissionStore } = await import('../stores/permissionStore.js')
+  const permStore = usePermissionStore()
+
+  if (!permStore.isLoaded) {
+    try {
+      await permStore.loadUserAndRoutes(router)
+      // 路由刚刚动态添加，需要重新导航让路由匹配生效
+      next({ ...to, replace: true })
+    } catch (err) {
+      console.error('动态路由加载故障:', err)
+      // token 失效等场景，清除并跳登录
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      next('/login')
+    }
   } else {
     next()
   }
+})
+
+// 路由错误处理
+router.onError((error) => {
+  console.error('Router error:', error)
 })
 
 export default router

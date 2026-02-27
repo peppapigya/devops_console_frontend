@@ -26,29 +26,36 @@
           unique-opened
           router
         >
-          <template v-for="route in allMenuRoutes" :key="route.path || route.meta.title">
-            <!-- 有子菜单的情况 -->
-            <el-sub-menu v-if="route.children && route.children.length > 0" :index="route.path || route.meta.title">
+          <template v-for="item in sidebarMenus" :key="item.id">
+            <!-- 有子菜单 -->
+            <el-sub-menu v-if="item.children && item.children.length > 0" :index="String(item.id)">
               <template #title>
-                <el-icon><component :is="route.meta.icon" /></el-icon>
-                <span>{{ route.meta.title }}</span>
+                <el-icon><component :is="item.icon" /></el-icon>
+                <span>{{ item.name }}</span>
               </template>
-              <el-menu-item 
-                v-for="child in route.children" 
-                :key="child.path" 
-                :index="child.path"
-              >
-                <el-icon v-if="child.meta.icon"><component :is="child.meta.icon" /></el-icon>
-                <template #title>{{ child.meta.title }}</template>
-              </el-menu-item>
+              <template v-for="sub in item.children" :key="sub.id">
+                <!-- 二级有子菜单（三级菜单） -->
+                <el-sub-menu v-if="sub.children && sub.children.length > 0" :index="String(sub.id)">
+                  <template #title>
+                    <el-icon><component :is="sub.icon" /></el-icon>
+                    <span>{{ sub.name }}</span>
+                  </template>
+                  <el-menu-item v-for="leaf in sub.children" :key="leaf.id" :index="leaf.path">
+                    <el-icon v-if="leaf.icon"><component :is="leaf.icon" /></el-icon>
+                    <template #title>{{ leaf.name }}</template>
+                  </el-menu-item>
+                </el-sub-menu>
+                <!-- 二级无子菜单 -->
+                <el-menu-item v-else :index="sub.path">
+                  <el-icon v-if="sub.icon"><component :is="sub.icon" /></el-icon>
+                  <template #title>{{ sub.name }}</template>
+                </el-menu-item>
+              </template>
             </el-sub-menu>
-
-            <!-- 无子菜单的情况 -->
-            <el-menu-item v-else :index="route.path">
-              <el-icon><component :is="route.meta.icon" /></el-icon>
-              <template #title>
-                <span>{{ route.meta.title }}</span>
-              </template>
+            <!-- 无子菜单（一级直达） -->
+            <el-menu-item v-else :index="item.path">
+              <el-icon><component :is="item.icon" /></el-icon>
+              <template #title><span>{{ item.name }}</span></template>
             </el-menu-item>
           </template>
         </el-menu>
@@ -178,18 +185,17 @@
            <!-- 用户菜单 -->
            <el-dropdown @command="handleUserCommand" trigger="click">
               <div class="user-profile">
-                <el-avatar :size="32" src="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png" />
-                <span class="user-name">Admin</span>
+                <el-avatar :size="32" :src="permStore.userInfo?.avatar || 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'" />
+                <span class="user-name">{{ permStore.userInfo?.nickname || permStore.userInfo?.username || 'Admin' }}</span>
                 <el-icon><CaretBottom /></el-icon>
               </div>
               <template #dropdown>
                 <el-dropdown-menu class="user-dropdown">
                   <div class="user-dropdown-header">
-                    <p class="name">Administrator</p>
-                    <p class="role">超级管理员</p>
+                    <p class="name">{{ permStore.userInfo?.nickname || permStore.userInfo?.username }}</p>
+                    <p class="role">{{ permStore.roles?.join(', ') || '' }}</p>
                   </div>
-                  <el-dropdown-item command="profile" divided><el-icon><User /></el-icon>个人中心</el-dropdown-item>
-                  <el-dropdown-item command="settings"><el-icon><Setting /></el-icon>系统设置</el-dropdown-item>
+                  <el-dropdown-item v-if="permStore.hasPerm('sys:user:profile')" command="profile" divided><el-icon><User /></el-icon>个人中心</el-dropdown-item>
                   <el-dropdown-item command="logout" divided style="color: #f56c6c;"><el-icon><SwitchButton /></el-icon>退出登录</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
@@ -210,22 +216,24 @@
 </template>
 
 <script setup>
-import {ref, computed, onMounted, onUnmounted, nextTick, watch} from 'vue'
+import {ref, computed, onMounted, watch} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 import {ElMessage, ElMessageBox} from 'element-plus'
-import {getInstanceList, deleteInstance, testConnection, getInstanceTypes} from '@/api/instance.js'
+import {getInstanceList, getInstanceTypes} from '@/api/instance.js'
 import { setSelectedInstance, getSelectedInstanceType } from '@/stores/instanceStore.js'
+import { usePermissionStore } from '@/stores/permissionStore.js'
 import {
   Monitor, Bell, User, ArrowDown, Setting, SwitchButton,
   Sunny, Moon, House, DocumentCopy, Grid, CopyDocument, TrendCharts,
-  Connection, Plus, List, Search, Refresh, Edit, ArrowRight,
+  Connection, Plus, List, Search, Refresh,
   DataLine, WarningFilled, Delete, MoreFilled, Box, Files, Folder, FolderOpened, DataBoard, Timer,
   Expand, Fold, CaretBottom, Cpu, Coin, Ticket, Share, Operation, Document, Key, BellFilled, Histogram,
-  Top, Right, Lock, UserFilled
+  Top, Right, Lock, UserFilled, OfficeBuilding, Menu, ShoppingCart
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
+const permStore = usePermissionStore()
 
 // 状态
 const isDark = ref(false)
@@ -237,148 +245,15 @@ const searchQuery = ref('')
 const typeFilter = ref('')
 const statusFilter = ref('')
 
-// 获取所有菜单路由
-const allMenuRoutes = computed(() => {
-  const instanceType = getSelectedInstanceType()
+// ======================================================
+// 动态菜单：直接使用 permissionStore 中的 menuTree
+// menuTree 已由路由守卫加载，这里只需读取
+// ======================================================
+const sidebarMenus = computed(() => permStore.menuTree)
 
-  // Elasticsearch 菜单
-  const esMenus = [
-    {path: '/es', meta: {title: 'ES控制台', icon: 'Monitor', instanceType: 'elasticsearch'}},
-    {
-      path: 'es-cluster', 
-      meta: {title: '集群管理', icon: 'Connection'},
-      children: [
-        {path: '/nodes', meta: {title: '节点管理', icon: 'Connection', instanceType: 'elasticsearch'}},
-        {path: '/shards', meta: {title: '分片管理', icon: 'Grid', instanceType: 'elasticsearch'}},
-      ]
-    },
-    {
-      path: 'es-data',
-      meta: {title: '数据管理', icon: 'DataBoard'},
-      children: [
-        {path: '/indices', meta: {title: '索引管理', icon: 'DocumentCopy', instanceType: 'elasticsearch'}},
-        {path: '/data', meta: {title: '数据查询', icon: 'Search', instanceType: 'elasticsearch'}}, // Changed title for clarity
-        {path: '/backup', meta: {title: '备份管理', icon: 'FolderOpened', instanceType: 'elasticsearch'}}
-      ]
-    }
-  ]
+// 保留，兼容其他地方的引用
+const allMenuRoutes = computed(() => [])
 
-  // Kubernetes 菜单
-  const k8sMenus = [
-    {path: '/k8s', meta: {title: 'K8s概览', icon: 'Monitor', instanceType: 'kubernetes'}},
-    {
-      path: 'k8s-cluster',
-      meta: {title: '集群管理', icon: 'Connection'},
-      children: [
-         {path: '/k8s/node', meta: {title: '节点管理', icon: 'Monitor', instanceType: 'kubernetes'}},
-         {path: '/k8s/namespace', meta: {title: '命名空间', icon: 'Folder', instanceType: 'kubernetes'}}
-      ]
-    },
-    {
-      path: 'k8s-workload',
-      meta: {title: '工作负载', icon: 'Box'},
-      children: [
-        {path: '/k8s/pod', meta: {title: 'Pod管理', icon: 'Box', instanceType: 'kubernetes'}},
-        {path: '/k8s/deployment', meta: {title: 'Deployments', icon: 'Files', instanceType: 'kubernetes'}},
-        {path: '/k8s/replicaset', meta: {title: 'ReplicaSets', icon: 'CopyDocument', instanceType: 'kubernetes'}},
-        {path: '/k8s/rc', meta: {title: 'RCs', icon: 'CopyDocument', instanceType: 'kubernetes'}},
-        {path: '/k8s/daemonset', meta: {title: 'DaemonSets', icon: 'Monitor', instanceType: 'kubernetes'}},
-        {path: '/k8s/job', meta: {title: 'Jobs', icon: 'List', instanceType: 'kubernetes'}},
-        {path: '/k8s/cronjob', meta: {title: 'CronJobs', icon: 'Timer', instanceType: 'kubernetes'}},
-      ]
-    },
-    {
-      path: 'k8s-autoscaling',
-      meta: {title: '弹性伸缩', icon: 'TrendCharts'},
-      children: [
-        {path: '/k8s/hpa', meta: {title: 'HPA', icon: 'Right', instanceType: 'kubernetes'}},
-        {path: '/k8s/vpa', meta: {title: 'VPA', icon: 'Top', instanceType: 'kubernetes'}},
-      ]
-    },
-    {
-      path: 'k8s-extension',
-      meta: {title: '扩展中心', icon: 'Cpu'},
-      children: [
-        {path: '/k8s/crd', meta: {title: 'CRD', icon: 'Cpu', instanceType: 'kubernetes'}},
-        {path: '/k8s/operator', meta: {title: 'Operators', icon: 'Box', instanceType: 'kubernetes'}},
-      ]
-    },
-    {
-      path: 'k8s-storage',
-      meta: {title: '存储管理', icon: 'Coin'},
-      children: [
-        {path: '/k8s/pv', meta: {title: 'PV管理', icon: 'Coin', instanceType: 'kubernetes'}},
-        {path: '/k8s/pvc', meta: {title: 'PVC管理', icon: 'Ticket', instanceType: 'kubernetes'}},
-        {path: '/k8s/storageclass', meta: {title: 'StorageClass', icon: 'Box', instanceType: 'kubernetes'}},
-      ]
-    },
-    {
-       path: 'k8s-network',
-       meta: {title: '服务发现', icon: 'Connection'},
-       children: [
-         {path: '/k8s/service', meta: {title: 'Services', icon: 'Connection', instanceType: 'kubernetes'}},
-         {path: '/k8s/ingress', meta: {title: 'Ingress', icon: 'Share', instanceType: 'kubernetes'}},
-         {path: '/k8s/ingressclass', meta: {title: 'IngressClass', icon: 'Operation', instanceType: 'kubernetes'}},
-       ]
-    },
-    {
-       path: 'k8s-config',
-       meta: {title: '配置管理', icon: 'Document'},
-       children: [
-         {path: '/k8s/configmap', meta: {title: 'ConfigMap', icon: 'Document', instanceType: 'kubernetes'}},
-         {path: '/k8s/secret', meta: {title: 'Secret', icon: 'Key', instanceType: 'kubernetes'}},
-       ]
-    },
-    {
-       path: 'k8s-monitoring',
-       meta: {title: '监控与事件', icon: 'BellFilled'},
-       children: [
-         {path: '/k8s/event', meta: {title: '事件管理', icon: 'BellFilled', instanceType: 'kubernetes'}},
-       ]
-    },
-    {
-      path: 'helm',
-      meta: {title: 'Helm 应用商店', icon: 'ShoppingCart'},
-      children: [
-        {path: '/helm/repos', meta: {title: 'Helm仓库', icon: 'Box', instanceType: 'kubernetes'}},
-        {path: '/helm/store', meta: {title: '应用商店', icon: 'ShoppingCart', instanceType: 'kubernetes'}},
-        {path: '/helm/installed', meta: {title: '已安装应用', icon: 'Histogram', instanceType: 'kubernetes'}},
-      ]
-    },
-    {
-      path: 'k8s-rbac',
-      meta: {title: '权限管理', icon: 'Lock'},
-      children: [
-        {path: '/k8s/role', meta: {title: 'Role', icon: 'Lock', instanceType: 'kubernetes'}},
-        {path: '/k8s/clusterrole', meta: {title: 'ClusterRole', icon: 'Lock', instanceType: 'kubernetes'}},
-        {path: '/k8s/rolebinding', meta: {title: 'RoleBinding', icon: 'Connection', instanceType: 'kubernetes'}},
-        {path: '/k8s/clusterrolebinding', meta: {title: 'ClusterRoleBinding', icon: 'Connection', instanceType: 'kubernetes'}},
-      ]
-    }
-  ]
-
-  // 通用菜单
-  const commonMenus = [
-    {path: '/settings', meta: {title: '系统设置', icon: 'Setting'}}
-  ]
-
-  // CI/CD 菜单
-  const cicdMenus = [
-      {
-          path: '/cicd/pipelines', 
-          meta: { title: 'CI/CD 流水线', icon: 'Cpu' }
-      }
-  ]
-
-  if (instanceType === 'kubernetes') {
-    return [...k8sMenus, ...cicdMenus, ...commonMenus]
-  } else if (instanceType === 'elasticsearch') {
-    return [...esMenus, ...commonMenus]
-  } else {
-    // 默认返回 ES 菜单
-    return [...esMenus, ...commonMenus]
-  }
-})
 
 // 计算选中实例名称
 const selectedInstanceName = computed(() => {
@@ -433,8 +308,10 @@ const handleUserCommand = (command) => {
     case 'logout':
       localStorage.removeItem('access_token')
       localStorage.removeItem('refresh_token')
+      permStore.reset()
       ElMessage.success('已退出登录')
-      router.push('/login')
+      // 跳转登录页并强制刷新，彻底清除动态路由和内存状态
+      window.location.href = '/login'
       break
   }
 }
@@ -446,15 +323,7 @@ const selectInstance = (instanceId) => {
   if (instance) {
     setSelectedInstance(instance)
     ElMessage.success(`已切换到: ${instance.name}`)
-    // Reset route logic if needed
-    if (instance.instance_type === 'prometheus') {
-      router.push('/instances')
-      return
-    }
-    const menus = allMenuRoutes.value
-    if (menus.length > 0) {
-       router.push(menus[0].path)
-    }
+    // 切换实例后保持在当前页面，不强制跳转
   }
 }
 
