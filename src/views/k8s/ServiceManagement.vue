@@ -19,7 +19,7 @@
             />
           </el-select>
         </div>
-        <el-button type="primary" @click="showCreateDialog = true">
+        <el-button type="primary" @click="showCreateDialog = true" v-show="permStore.hasPerm('k8s:service:showcreatedialogtrue')" >
           <el-icon><Plus /></el-icon>
           创建Service
         </el-button>
@@ -106,15 +106,15 @@
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button-group>
-              <el-button size="small" @click="handleViewDetail(row)">
+              <el-button size="small" @click="handleViewDetail(row)" v-show="permStore.hasPerm('k8s:service:handleviewdetail')" >
                 <el-icon><View /></el-icon>
                 详情
               </el-button>
-              <el-button size="small" @click="handleEdit(row)">
+              <el-button size="small" @click="handleEdit(row)" v-show="permStore.hasPerm('k8s:service:handleedit')" >
                 <el-icon><Edit /></el-icon>
                 编辑
               </el-button>
-              <el-button size="small" type="danger" @click="handleDelete(row)">
+              <el-button size="small" type="danger" @click="handleDelete(row)" v-show="permStore.hasPerm('k8s:service:handledelete')" >
                 <el-icon><Delete /></el-icon>
                 删除
               </el-button>
@@ -133,7 +133,7 @@
         :closable="false"
       >
         <template #default>
-          <el-button size="small" @click="handleBatchDelete" type="danger">批量删除</el-button>
+          <el-button size="small" @click="handleBatchDelete" type="danger" v-show="permStore.hasPerm('k8s:service:handlebatchdelete')" >批量删除</el-button>
           <el-button size="small" @click="clearSelection">取消选择</el-button>
         </template>
       </el-alert>
@@ -322,7 +322,7 @@
                     <el-input v-model="ip.value" placeholder="外部IP地址" />
                   </el-col>
                   <el-col :span="4">
-                    <el-button type="danger" size="small" @click="removeExternalIP(index)">删除</el-button>
+                    <el-button type="danger" size="small" @click="removeExternalIP(index)" v-show="permStore.hasPerm('k8s:service:removeexternalip')" >删除</el-button>
                   </el-col>
                 </el-row>
               </div>
@@ -637,6 +637,9 @@
 </template>
 
 <script setup>
+import { usePermissionStore } from '@/stores/permissionStore.js'
+const permStore = usePermissionStore()
+
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {

@@ -6,7 +6,7 @@
           <h2>命名空间管理</h2>
           <p>管理 Kubernetes 命名空间</p>
         </div>
-        <el-button type="primary" @click="showCreateDialog = true">
+        <el-button type="primary" @click="showCreateDialog = true" v-show="permStore.hasPerm('k8s:namespace:showcreatedialogtrue')" >
           <el-icon><Plus /></el-icon>
           创建命名空间
         </el-button>
@@ -73,7 +73,7 @@
                 @click="handleDelete(scope.row)"
                 :disabled="isSystemNamespace(scope.row.name)"
                 link
-              >
+               v-show="permStore.hasPerm('k8s:namespace:handledelete')" >
                 <el-icon><Delete /></el-icon>
                 删除
               </el-button>
@@ -98,6 +98,9 @@
 </template>
 
 <script setup>
+import { usePermissionStore } from '@/stores/permissionStore.js'
+const permStore = usePermissionStore()
+
 import { ref, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Delete, Folder } from '@element-plus/icons-vue'

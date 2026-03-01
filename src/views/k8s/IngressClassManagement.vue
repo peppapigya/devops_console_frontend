@@ -40,7 +40,7 @@
           </el-table-column>
           <el-table-column label="操作" width="120" fixed="right">
             <template #default="scope">
-              <el-button link type="primary" size="small" @click="handleViewDetail(scope.row)">详情</el-button>
+              <el-button link type="primary" size="small" @click="handleViewDetail(scope.row)" v-show="permStore.hasPerm('k8s:ingressclass:handleviewdetail')" >详情</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -72,6 +72,9 @@
 </template>
 
 <script setup>
+import { usePermissionStore } from '@/stores/permissionStore.js'
+const permStore = usePermissionStore()
+
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getIngressClassList, getIngressClassDetail } from '@/api/k8s/ingressclass'

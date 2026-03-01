@@ -19,7 +19,7 @@
               />
             </el-select>
           </div>
-          <el-button type="primary" @click="showCreateDialog = true">
+          <el-button type="primary" @click="showCreateDialog = true" v-show="permStore.hasPerm('k8s:pod:showcreatedialogtrue')" >
             <el-icon><Plus /></el-icon>
             创建 Pod
           </el-button>
@@ -70,15 +70,15 @@
           <el-table-column label="操作" width="280" fixed="right">
             <template #default="scope">
               <el-button-group>
-                <el-button size="small" @click="handleViewDetail(scope.row)">
+                <el-button size="small" @click="handleViewDetail(scope.row)" v-show="permStore.hasPerm('k8s:pod:handleviewdetail')" >
                   <el-icon><View /></el-icon>
                   详情
                 </el-button>
-                <el-button size="small" type="primary" @click="handleOpenTerminal(scope.row)">
+                <el-button size="small" type="primary" @click="handleOpenTerminal(scope.row)" v-show="permStore.hasPerm('k8s:pod:handleopenterminal')" >
                   <el-icon><Monitor /></el-icon>
                   终端
                 </el-button>
-                <el-button size="small" type="danger" @click="handleDelete(scope.row)">
+                <el-button size="small" type="danger" @click="handleDelete(scope.row)" v-show="permStore.hasPerm('k8s:pod:handledelete')" >
                   <el-icon><Delete /></el-icon>
                   删除
                 </el-button>
@@ -473,7 +473,7 @@
                 <el-icon><Refresh /></el-icon>
                 刷新
               </el-button>
-              <el-button @click="clearLogs" size="small">
+              <el-button @click="clearLogs" size="small" v-show="permStore.hasPerm('k8s:pod:clearlogs')" >
                 <el-icon><Delete /></el-icon>
                 清空
               </el-button>
@@ -498,7 +498,7 @@
               <el-select v-model="selectedPrometheusId" placeholder="选择 Prometheus 实例" size="small" style="width: 200px;">
                 <el-option v-for="inst in prometheusInstances" :key="inst.id" :label="inst.name" :value="inst.id" />
               </el-select>
-              <el-button type="primary" size="small" @click="handleOpenCustomMonitorDialog(null)">
+              <el-button type="primary" size="small" @click="handleOpenCustomMonitorDialog(null)" v-show="permStore.hasPerm('k8s:pod:handleopencustommonitordialog')" >
                 <el-icon><Plus /></el-icon> 新增自定义监控图表
               </el-button>
             </div>
@@ -604,6 +604,9 @@
 </template>
 
 <script setup>
+import { usePermissionStore } from '@/stores/permissionStore.js'
+const permStore = usePermissionStore()
+
 import { ref, onMounted, watch, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, View, Delete, Refresh, Download, Monitor } from '@element-plus/icons-vue'

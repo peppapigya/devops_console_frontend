@@ -3,6 +3,11 @@
     <!-- Filter Bar -->
     <div class="filter-bar">
       <div class="filter-left">
+        <label class="filter-label">命名空间</label>
+        <el-select v-model="selectedNamespace" placeholder="选择命名空间" filterable class="filter-select" @change="fetchData">
+          <el-option label="所有" value="all" />
+          <el-option v-for="ns in namespaceList" :key="ns.name" :label="ns.name" :value="ns.name" />
+        </el-select>
         <label class="filter-label">工作负载名称</label>
         <el-input 
           v-model="searchKeyword" 
@@ -20,7 +25,7 @@
         <el-button type="success" class="btn-monitor">
           <el-icon class="mr-1"><Monitor /></el-icon> 监控仪表板
         </el-button>
-        <el-button type="primary" class="btn-create" @click="showCreateDialog = true">
+        <el-button type="primary" class="btn-create" @click="showCreateDialog = true" v-show="permStore.hasPerm('k8s:statefulset:showcreatedialogtrue')" >
           <el-icon class="mr-1"><Plus /></el-icon> 创建 StatefuSet
         </el-button>
       </div>
@@ -131,11 +136,9 @@
                        <el-icon><Cloudy /></el-icon>
                     </el-button>
                   </el-tooltip>
-                  <el-tooltip content="详情" placement="top">
-                    <el-button circle size="small" class="op-btn yellow" @click="handleViewDetail(row)">
+                  <el-button circle size="small" class="op-btn yellow" @click="handleViewDetail(row)" v-show="permStore.hasPerm('k8s:statefulset:handleviewdetail')" >
                        <el-icon><InfoFilled /></el-icon>
                     </el-button>
-                  </el-tooltip>
                   <el-tooltip content="更新镜像" placement="top">
                     <el-button circle size="small" class="op-btn green" @click="handleUpdate(row)">
                        <el-icon><Setting /></el-icon>
@@ -146,16 +149,12 @@
                        <el-icon><Monitor /></el-icon>
                     </el-button>
                   </el-tooltip>
-                  <el-tooltip content="日志" placement="top">
-                    <el-button circle size="small" class="op-btn blue-light" @click="handleLogs(row)">
+                  <el-button circle size="small" class="op-btn blue-light" @click="handleLogs(row)" v-show="permStore.hasPerm('k8s:statefulset:handlelogs')" >
                        <el-icon><Document /></el-icon>
                     </el-button>
-                  </el-tooltip>
-                  <el-tooltip content="删除" placement="top">
-                    <el-button circle size="small" type="danger" class="op-btn red" @click="handleDelete(row)">
+                  <el-button circle size="small" type="danger" class="op-btn red" @click="handleDelete(row)" v-show="permStore.hasPerm('k8s:statefulset:handledelete')" >
                        <el-icon><Delete /></el-icon>
                     </el-button>
-                  </el-tooltip>
                </div>
             </template>
         </el-table-column>
@@ -237,32 +236,39 @@ spec:
 </template>
 
 <script setup>
-import { ref, onMounted, reactive } from 'vue'
+import { usePermissionStore } from '@/stores/permissionStore.js'
+import { ref, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { 
-  Search, RefreshRight, Monitor, Plus, 
-  Coin, PriceTag, Platform, Box, Cloudy, 
-  InfoFilled, Setting, Document, Delete 
-} from '@element-plus/icons-vue'
-import { getStatefulSetList, scaleStatefulSet, deleteStatefulSet } from '@/api/k8s/statefulset'
-import dayjs from 'dayjs'
+import { getStatefulSetList, deleteStatefulSet, scaleStatefulSet } from '@/api/k8s/statefulset'
+import { getNamespaceList } from '@/api/k8s/namespace'
 import { getSelectedInstanceId } from '@/stores/instanceStore'
+import dayjs from 'dayjs'
+
+const permStore = usePermissionStore()
 
 const loading = ref(false)
-const searchKeyword = ref('')
 const statefulSetList = ref([])
+const searchKeyword = ref('')
+const selectedNamespace = ref('default')
+const namespaceList = ref([])
+
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
-const selectedNamespace = ref('default') 
 
 const showCreateDialog = ref(false)
 const yamlContent = ref('')
-const namespaceList = ref([])
-const yamlError = ref('')
-const isYamlValid = ref(true)
+
 const showScaleDialog = ref(false)
-const scaleForm = reactive({ replicas: 1, row: null })
+const scaleForm = ref({
+    row: null,
+    replicas: 0
+})
+
+watch(selectedNamespace, () => {
+    currentPage.value = 1
+    fetchData()
+})
 
 const fetchData = async () => {
     loading.value = true
@@ -280,6 +286,19 @@ const fetchData = async () => {
     }
 }
 
+const fetchNamespaces = async () => {
+    try {
+        const instanceId = getSelectedInstanceId()
+        const res = await getNamespaceList(instanceId)
+        namespaceList.value = res.data?.namespaceList || []
+        if (!namespaceList.value.some(ns => ns.name === selectedNamespace.value)) {
+            selectedNamespace.value = namespaceList.value[0]?.name || 'default'
+        }
+    } catch (e) {
+        ElMessage.error('获取命名空间列表失败')
+    }
+}
+
 const handleSearch = () => fetchData()
 const handleReset = () => { searchKeyword.value = ''; fetchData() }
 const handleSizeChange = () => fetchData()
@@ -287,13 +306,13 @@ const formatDate = (ts) => dayjs(ts).isValid() ? dayjs(ts).format('YYYY-MM-DD HH
 
 const handleViewDetail = (row) => ElMessage.info(`查看详情: ${row.name}`)
 const handleScale = (row) => { 
-    scaleForm.row = row; 
-    scaleForm.replicas = row.replicas; 
+    scaleForm.value.row = row; 
+    scaleForm.value.replicas = row.replicas; 
     showScaleDialog.value = true; 
 }
 const handleScaleConfirm = async () => {
     try {
-        await scaleStatefulSet(scaleForm.row.namespace, scaleForm.row.name, scaleForm.replicas) 
+        await scaleStatefulSet(scaleForm.value.row.namespace, scaleForm.value.row.name, scaleForm.value.replicas) 
         ElMessage.success('扩缩容指令已发送')
         showScaleDialog.value = false
         fetchData()
@@ -312,8 +331,13 @@ const handleDelete = (row) => {
     })
 }
 
+const handleCreate = () => {
+    ElMessage.info('功能待完善')
+}
+
 onMounted(() => {
     fetchData()
+    fetchNamespaces()
 })
 </script>
 
@@ -328,17 +352,11 @@ onMounted(() => {
   align-items: center;
   gap: 12px;
 }
-.filter-label {
-  font-size: 14px;
-  color: #606266;
-}
-.filter-input {
-  width: 240px;
-}
+.filter-label { font-size: 14px; color: #606266; }
+.filter-input { width: 240px; }
+.filter-select { width: 140px; }
 
-.table-wrapper {
-  background: white;
-}
+.table-wrapper { background: white; }
 
 .name-cell {
   display: flex;
@@ -347,15 +365,12 @@ onMounted(() => {
 }
 .statefulset-icon {
   font-size: 24px;
-  color: #409EFF;
+  color: var(--primary-color);
   background: rgba(64, 158, 255, 0.1);
   padding: 6px;
   border-radius: 6px;
 }
-.name-content {
-  display: flex;
-  flex-direction: column;
-}
+.name-content { display: flex; flex-direction: column; }
 .name-link {
   color: var(--primary-color);
   font-weight: 600;
@@ -364,11 +379,7 @@ onMounted(() => {
   font-size: 14px;
 }
 .name-link:hover { text-decoration: underline; }
-.resource-type {
-  font-size: 12px;
-  color: #409EFF; /* Blue for STS */
-  margin-top: 2px;
-}
+.resource-type { font-size: 12px; color: #E6A23C; margin-top: 2px; }
 
 .label-cell {
   display: flex;

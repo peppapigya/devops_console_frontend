@@ -15,7 +15,7 @@
             <el-icon><Timer /></el-icon>
             {{ autoRefreshEnabled ? '停止自动刷新' : '开启自动刷新' }}
           </el-button>
-          <el-button type="primary" @click="showAddDialog = true">
+          <el-button type="primary" @click="showAddDialog = true" v-show="permStore.hasPerm('k8s:node:showadddialogtrue')" >
             <el-icon><Plus /></el-icon>
             添加节点
           </el-button>
@@ -454,7 +454,7 @@
               <el-option v-for="inst in prometheusInstances" :key="inst.id" :label="inst.name" :value="inst.id" />
             </el-select>
           </div>
-          <el-button type="primary" size="small" @click="handleOpenCustomMonitorDialog(null)">
+          <el-button type="primary" size="small" @click="handleOpenCustomMonitorDialog(null)" v-show="permStore.hasPerm('k8s:node:handleopencustommonitordialog')" >
             <el-icon><Plus /></el-icon> 新增自定义监控图表
           </el-button>
         </div>
@@ -535,6 +535,9 @@
 </template>
 
 <script setup>
+import { usePermissionStore } from '@/stores/permissionStore.js'
+const permStore = usePermissionStore()
+
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {

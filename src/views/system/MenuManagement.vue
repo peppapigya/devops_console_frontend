@@ -19,7 +19,16 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="icon" label="图标" width="80" />
+        <!-- 图标列：即显示图标图形，也显示名称 -->
+        <el-table-column label="图标" width="100">
+          <template #default="{ row }">
+            <div v-if="row.icon" class="icon-cell">
+              <el-icon :size="16"><component :is="row.icon" /></el-icon>
+              <span class="icon-name-text">{{ row.icon }}</span>
+            </div>
+            <span v-else class="text-muted">-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="path" label="路由路径" min-width="160" />
         <el-table-column prop="component" label="组件路径" min-width="200" />
         <el-table-column prop="perm" label="权限标识" min-width="200" />
@@ -44,11 +53,13 @@
       </el-table>
     </el-card>
 
+    <!-- ============ 新增/编辑 Dialog ============ -->
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px" destroy-on-close>
       <el-form ref="formRef" :model="form" :rules="formRules" label-width="90px">
         <el-form-item label="上级菜单">
           <el-tree-select v-model="form.parentId" :data="treeData"
             :props="{ label: 'name', value: 'id', children: 'children' }"
+            check-strictly
             placeholder="顶级菜单" clearable style="width:100%" />
         </el-form-item>
         <el-row :gutter="16">
@@ -66,9 +77,19 @@
               <el-input v-model="form.name" placeholder="菜单/功能名称" />
             </el-form-item>
           </el-col>
-          <el-col :span="12" v-if="form.type !== 3">
+          <!-- 图标选择器 -->
+          <el-col :span="24" v-if="form.type !== 3">
             <el-form-item label="图标">
-              <el-input v-model="form.icon" placeholder="Element Plus 图标名" />
+              <div class="icon-picker-trigger" @click="iconPickerVisible = true">
+                <div class="icon-preview" v-if="form.icon">
+                  <el-icon :size="18"><component :is="form.icon" /></el-icon>
+                  <span class="icon-name-badge">{{ form.icon }}</span>
+                </div>
+                <span class="icon-placeholder" v-else>点击选择图标</span>
+                <el-button size="small" link @click.stop="form.icon = ''">
+                  <el-icon v-if="form.icon"><Close /></el-icon>
+                </el-button>
+              </div>
             </el-form-item>
           </el-col>
           <el-col :span="12" v-if="form.type !== 3">
@@ -114,12 +135,45 @@
         <el-button type="primary" :loading="submitting" @click="handleSubmit">确认</el-button>
       </template>
     </el-dialog>
+
+    <!-- ============ 图标选择器弹窗 ============ -->
+    <el-dialog v-model="iconPickerVisible" title="选择图标" width="700px" destroy-on-close>
+      <el-input
+        v-model="iconSearch"
+        placeholder="搜索图标名称，如: User / Home / Setting..."
+        clearable
+        :prefix-icon="Search"
+        style="margin-bottom: 12px"
+      />
+      <el-scrollbar height="420px">
+        <div class="icon-grid">
+          <div
+            v-for="name in filteredIcons"
+            :key="name"
+            class="icon-grid-item"
+            :class="{ active: form.icon === name }"
+            @click="selectIcon(name)"
+            :title="name"
+          >
+            <el-icon :size="22"><component :is="name" /></el-icon>
+            <span class="icon-grid-label">{{ name }}</span>
+          </div>
+        </div>
+      </el-scrollbar>
+      <template #footer>
+        <span class="icon-picker-footer">
+          当前选中：<b>{{ form.icon || '未选择' }}</b>
+        </span>
+        <el-button @click="iconPickerVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, nextTick } from 'vue'
-import { Plus, Refresh, Sort } from '@element-plus/icons-vue'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { Plus, Refresh, Sort, Search, Close } from '@element-plus/icons-vue'
+import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { getMenuTree, createMenu, updateMenu, deleteMenu } from '@/api/system/menu.js'
@@ -142,6 +196,26 @@ const formRules = {
   type: [{ required: true }]
 }
 
+// ======== 图标选择器 ========
+const iconPickerVisible = ref(false)
+const iconSearch = ref('')
+
+// 获取所有图标名（排除工具函数）
+const allIconNames = Object.keys(ElementPlusIconsVue).filter(
+  key => typeof ElementPlusIconsVue[key] === 'object' && key !== 'default'
+)
+
+const filteredIcons = computed(() => {
+  if (!iconSearch.value) return allIconNames
+  return allIconNames.filter(n => n.toLowerCase().includes(iconSearch.value.toLowerCase()))
+})
+
+function selectIcon(name) {
+  form.icon = name
+  iconPickerVisible.value = false
+}
+
+// ======== 列表 ========
 onMounted(fetchList)
 
 async function fetchList() {
@@ -184,27 +258,18 @@ async function handleDelete(row) {
 async function handleRefreshCache() {
   loading.value = true
   try {
-    // 强制 permission store 重新加载
     permStore.isLoaded = false
     await permStore.loadUserAndRoutes(router)
     ElMessage.success('菜单缓存与动态路由已刷新')
-  } catch (e) {
-    ElMessage.error('刷新失败')
-  } finally {
-    loading.value = false
-  }
+  } catch { ElMessage.error('刷新失败') } finally { loading.value = false }
 }
 
 function toggleExpandAll() {
   isExpandedAll.value = !isExpandedAll.value
-  // 因为 default-expand-all 只在初始化时生效，运行时要靠 toggleRowExpansion
-  // 对于大量数据递归可能卡顿，但在菜单场景通常只有几十条
   const traverse = (list) => {
     list.forEach(item => {
       menuTable.value?.toggleRowExpansion(item, isExpandedAll.value)
-      if (item.children && item.children.length > 0) {
-        traverse(item.children)
-      }
+      if (item.children?.length) traverse(item.children)
     })
   }
   traverse(tableData.value)
@@ -216,4 +281,98 @@ function toggleExpandAll() {
 .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 .actions { display: flex; gap: 8px; }
 .title { font-size: 15px; font-weight: 600; }
+
+/* 表格图标列 */
+.icon-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.icon-name-text {
+  font-size: 11px;
+  color: #909399;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 60px;
+}
+.text-muted { color: #c0c4cc; }
+
+/* 图标选择触发器 */
+.icon-picker-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 0 12px;
+  height: 32px;
+  border: 1px solid #dcdfe6;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  background: #fff;
+}
+.icon-picker-trigger:hover { border-color: #409eff; }
+
+.icon-preview {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+.icon-name-badge {
+  font-size: 13px;
+  color: #303133;
+}
+.icon-placeholder {
+  flex: 1;
+  font-size: 13px;
+  color: #c0c4cc;
+}
+
+/* 图标选择器网格 */
+.icon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 8px;
+  padding: 4px;
+}
+
+.icon-grid-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 4px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 2px solid transparent;
+}
+.icon-grid-item:hover {
+  background: #f0f6ff;
+  border-color: #c6e0ff;
+}
+.icon-grid-item.active {
+  background: #ecf5ff;
+  border-color: #409eff;
+}
+
+.icon-grid-label {
+  font-size: 10px;
+  color: #606266;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
+  max-width: 82px;
+}
+
+.icon-picker-footer {
+  margin-right: auto;
+  font-size: 13px;
+  color: #606266;
+}
+.icon-picker-footer b { color: #409eff; }
 </style>

@@ -37,7 +37,7 @@
         <el-button type="success" class="btn-monitor">
           <el-icon class="mr-1"><Monitor /></el-icon> 监控仪表板
         </el-button>
-        <el-button type="primary" class="btn-create" @click="showCreateDialog = true">
+        <el-button type="primary" class="btn-create" @click="showCreateDialog = true" v-show="permStore.hasPerm('k8s:job:showcreatedialogtrue')" >
           <el-icon class="mr-1"><Plus /></el-icon> 创建 Job
         </el-button>
       </div>
@@ -157,11 +157,9 @@
                        <el-icon><InfoFilled /></el-icon>
                     </el-button>
                   </el-tooltip>
-                  <el-tooltip content="删除" placement="top">
-                    <el-button circle size="small" type="danger" class="op-btn red" @click="handleDelete(row)">
+                  <el-button circle size="small" type="danger" class="op-btn red" @click="handleDelete(row)" v-show="permStore.hasPerm('k8s:job:handledelete')" >
                        <el-icon><Delete /></el-icon>
                     </el-button>
-                  </el-tooltip>
                </div>
             </template>
         </el-table-column>
@@ -292,6 +290,9 @@ spec:
 </template>
 
 <script setup>
+import { usePermissionStore } from '@/stores/permissionStore.js'
+const permStore = usePermissionStore()
+
 import { ref, onMounted, reactive } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 

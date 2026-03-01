@@ -7,7 +7,7 @@
           <p>查看和管理 Kubernetes Storage Classes</p>
         </div>
         <div class="header-actions">
-           <el-button type="primary" class="autoops-btn-primary" @click="showCreateDialog = true">
+           <el-button type="primary" class="autoops-btn-primary" @click="showCreateDialog = true" v-show="permStore.hasPerm('k8s:storageclass:showcreatedialogtrue')" >
             <el-icon><Plus /></el-icon>
             创建 StorageClass
           </el-button>
@@ -36,8 +36,8 @@
           </el-table-column>
           <el-table-column label="操作" width="160" fixed="right">
             <template #default="scope">
-              <el-button link type="primary" size="small" @click="handleViewDetail(scope.row)">详情</el-button>
-              <el-button link type="danger" size="small" @click="handleDelete(scope.row)">删除</el-button>
+              <el-button link type="primary" size="small" @click="handleViewDetail(scope.row)" v-show="permStore.hasPerm('k8s:storageclass:handleviewdetail')" >详情</el-button>
+              <el-button link type="danger" size="small" @click="handleDelete(scope.row)" v-show="permStore.hasPerm('k8s:storageclass:handledelete')" >删除</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -94,6 +94,9 @@
 </template>
 
 <script setup>
+import { usePermissionStore } from '@/stores/permissionStore.js'
+const permStore = usePermissionStore()
+
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, View, Delete } from '@element-plus/icons-vue'

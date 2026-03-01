@@ -23,7 +23,7 @@
         <el-icon><Monitor /></el-icon>
         <span>监控仪表板</span>
       </el-button>
-      <el-button type="primary" class="autoops-btn-primary" @click="showCreateDialog = true">
+      <el-button type="primary" class="autoops-btn-primary" @click="showCreateDialog = true" v-show="permStore.hasPerm('k8s:deployment:showcreatedialogtrue')">
         <el-icon><Plus /></el-icon>
         <span>创建工作负载</span>
       </el-button>
@@ -40,7 +40,6 @@
         <el-table-column label="名称" min-width="220">
           <template #default="{ row }">
             <div class="name-cell">
-              <el-icon class="resource-icon deployment-icon"><aim /></el-icon>
               <div class="name-content">
                 <a class="name-link" @click="handleViewDetail(row)">{{ row.name }}</a>
                 <span class="resource-type">Deployment</span>
@@ -130,7 +129,7 @@
             <template #default="{ row }">
                <div class="autoops-actions">
                   <el-button link type="primary" size="small" @click="handleScale(row)">扩缩容</el-button>
-                  <el-button link type="primary" size="small" @click="handleViewDetail(row)">详情</el-button>
+                  <el-button link type="primary" size="small" @click="handleViewDetail(row)" v-show="permStore.hasPerm('k8s:deployment:handleviewdetail')">详情</el-button>
                   <el-button link type="primary" size="small" @click="handleUpdate(row)">更新</el-button>
                   <el-dropdown trigger="click" @command="(cmd) => handleCommand(cmd, row)">
                     <span class="el-dropdown-link">
@@ -275,6 +274,9 @@
 </template>
 
 <script setup>
+import { usePermissionStore } from '@/stores/permissionStore.js'
+const permStore = usePermissionStore()
+
 import { ref, onMounted, reactive } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 

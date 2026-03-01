@@ -60,10 +60,10 @@
           <el-table-column label="操作" width="180" fixed="right">
             <template #default="scope">
               <el-button-group>
-                <el-button size="small" @click="handleDetail(scope.row)">
+                <el-button size="small" @click="handleDetail(scope.row)" v-show="permStore.hasPerm('k8s:operator:handledetail')" >
                   <el-icon><View /></el-icon> 详情
                 </el-button>
-                <el-button size="small" type="danger" @click="handleDelete(scope.row)">
+                <el-button size="small" type="danger" @click="handleDelete(scope.row)" v-show="permStore.hasPerm('k8s:operator:handledelete')" >
                   <el-icon><Delete /></el-icon> 删除
                 </el-button>
               </el-button-group>
@@ -94,6 +94,7 @@
 </template>
 
 <script>
+import { usePermissionStore } from '@/stores/permissionStore.js'
 import { getSubscriptionList, getSubscriptionDetail, deleteSubscription } from '@/api/k8s/operator'
 import { getNamespaceList } from '@/api/k8s/namespace'
 import { getSelectedInstanceId } from '@/stores/instanceStore'
@@ -116,6 +117,9 @@ export default {
     }
   },
   computed: {
+    permStore() {
+      return usePermissionStore()
+    },
     instanceId() {
       return getSelectedInstanceId()
     }

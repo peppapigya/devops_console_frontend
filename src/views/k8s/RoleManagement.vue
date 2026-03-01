@@ -14,7 +14,7 @@
               <el-option v-for="ns in namespaceList" :key="ns.name" :label="ns.name" :value="ns.name" />
             </el-select>
           </div>
-          <el-button type="primary" class="autoops-btn-primary" @click="openCreateDialog">
+          <el-button type="primary" class="autoops-btn-primary" @click="openCreateDialog" v-show="permStore.hasPerm('k8s:role:opencreatedialog')" >
             <el-icon><Plus /></el-icon>创建 Role
           </el-button>
         </div>
@@ -44,9 +44,9 @@
           </el-table-column>
           <el-table-column label="操作" width="200" fixed="right">
             <template #default="scope">
-              <el-button link type="primary" size="small" @click="handleViewDetail(scope.row)">详情</el-button>
-              <el-button link type="info" size="small" @click="handleEdit(scope.row)">编辑</el-button>
-              <el-button link type="danger" size="small" @click="handleDelete(scope.row)">删除</el-button>
+              <el-button link type="primary" size="small" @click="handleViewDetail(scope.row)" v-show="permStore.hasPerm('k8s:role:handleviewdetail')" >详情</el-button>
+              <el-button link type="info" size="small" @click="handleEdit(scope.row)" v-show="permStore.hasPerm('k8s:role:handleedit')" >编辑</el-button>
+              <el-button link type="danger" size="small" @click="handleDelete(scope.row)" v-show="permStore.hasPerm('k8s:role:handledelete')" >删除</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -217,6 +217,9 @@
 </template>
 
 <script setup>
+import { usePermissionStore } from '@/stores/permissionStore.js'
+const permStore = usePermissionStore()
+
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Delete } from '@element-plus/icons-vue'

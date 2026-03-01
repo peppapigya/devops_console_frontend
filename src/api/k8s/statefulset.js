@@ -1,4 +1,4 @@
-import request from '@/utils/request'
+import request from '../index.js'
 
 export function getStatefulSetList(namespace, instanceId) {
     return request({

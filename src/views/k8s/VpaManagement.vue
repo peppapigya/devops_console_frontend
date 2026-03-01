@@ -52,11 +52,9 @@
                   <el-icon><View /></el-icon>
                 </el-button>
               </el-tooltip>
-              <el-tooltip content="删除" placement="top">
-                <el-button class="autoops-action-btn delete" @click="handleDelete(scope.row)">
+              <el-button class="autoops-action-btn delete" @click="handleDelete(scope.row)" v-show="permStore.hasPerm('k8s:vpa:handledelete')" >
                   <el-icon><Delete /></el-icon>
                 </el-button>
-              </el-tooltip>
             </div>
           </template>
         </el-table-column>
@@ -84,6 +82,7 @@
 </template>
 
 <script>
+import { usePermissionStore } from '@/stores/permissionStore.js'
 import { getVPAList, getVPADetail, deleteVPA } from '@/api/k8s/vpa'
 import { getNamespaceList } from '@/api/k8s/namespace'
 import { getSelectedInstanceId } from '@/stores/instanceStore'
@@ -106,6 +105,9 @@ export default {
     }
   },
   computed: {
+    permStore() {
+      return usePermissionStore()
+    },
     instanceId() {
       return getSelectedInstanceId()
     }

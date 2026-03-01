@@ -75,11 +75,9 @@
                   <el-icon><View /></el-icon>
                 </el-button>
               </el-tooltip>
-              <el-tooltip content="删除" placement="top">
-                <el-button class="autoops-action-btn delete" @click="handleDelete(scope.row)">
+              <el-button class="autoops-action-btn delete" @click="handleDelete(scope.row)" v-show="permStore.hasPerm('k8s:replicationcontroller:handledelete')" >
                   <el-icon><Delete /></el-icon>
                 </el-button>
-              </el-tooltip>
             </div>
           </template>
         </el-table-column>
@@ -139,6 +137,7 @@
 </template>
 
 <script>
+import { usePermissionStore } from '@/stores/permissionStore.js'
 import { getRCList, getRCDetail, deleteRC } from '@/api/k8s/rc'
 import { getNamespaceList } from '@/api/k8s/namespace'
 import { getSelectedInstanceId } from '@/stores/instanceStore'
@@ -164,6 +163,9 @@ export default {
     }
   },
   computed: {
+    permStore() {
+      return usePermissionStore()
+    },
     instanceId() {
       return getSelectedInstanceId()
     }
@@ -192,14 +194,26 @@ export default {
       return parts[parts.length - 1] || fullImage
     },
     async fetchNamespaces() {
-      if (!this.instanceId) return
+      // Allow fetching without strict instanceId checks if the backend supports default or we use watch later.
+      // But instanceId should be ready.
       try {
-        const res = await getNamespaceList(this.instanceId)
-        if (res.code === 200) {
-          this.namespaceList = res.data.namespaceList
+        const id = this.instanceId || getSelectedInstanceId()
+        if (!id) return;
+        
+        const res = await getNamespaceList(id)
+        // Adjust for potential Axios response unwrapping
+        const rootData = res.data || res
+        const list = rootData.items || rootData.namespaceList || rootData || []
+        
+        if (Array.isArray(list)) {
+            this.namespaceList = list.map(item => ({ name: typeof item === 'string' ? item : item.name }))
+            // 确保如果当前不在 all 而且不在列表里，就切到 all
+            if (this.currentNamespace !== 'all' && !this.namespaceList.some(ns => ns.name === this.currentNamespace)) {
+                this.currentNamespace = 'all'
+            }
         }
       } catch (error) {
-        console.error(error)
+        console.error('获取命名空间失败', error)
       }
     },
     async fetchData() {

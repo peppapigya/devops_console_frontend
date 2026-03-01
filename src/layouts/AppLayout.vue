@@ -206,9 +206,7 @@
       <!-- 页面内容区 -->
       <div class="content-wrapper">
          <router-view v-slot="{ Component }">
-            <transition name="fade-transform" mode="out-in">
-               <component :is="Component" />
-            </transition>
+            <component :is="Component" :key="route.fullPath" />
          </router-view>
       </div>
     </main>
