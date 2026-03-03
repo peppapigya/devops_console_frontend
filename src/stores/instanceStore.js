@@ -1,10 +1,13 @@
-import { ref, reactive } from 'vue'
+import {reactive} from 'vue'
+
+// 尝试从 localStorage 恢复状态
+const savedState = JSON.parse(localStorage.getItem('selectedInstance') || '{}')
 
 // 全局状态
 const state = reactive({
-  selectedInstanceId: '',
-  selectedInstanceName: '',
-  selectedInstanceType: ''
+  selectedInstanceId: savedState.selectedInstanceId || '',
+  selectedInstanceName: savedState.selectedInstanceName || '',
+  selectedInstanceType: savedState.selectedInstanceType || ''
 })
 
 // 设置选中的实例
@@ -12,6 +15,12 @@ export const setSelectedInstance = (instance) => {
   state.selectedInstanceId = instance.id
   state.selectedInstanceName = instance.name
   state.selectedInstanceType = instance.instance_type || instance.type_name || instance.type
+  // 保存到 localStorage
+  localStorage.setItem('selectedInstance', JSON.stringify({
+    selectedInstanceId: state.selectedInstanceId,
+    selectedInstanceName: state.selectedInstanceName,
+    selectedInstanceType: state.selectedInstanceType
+  }))
 }
 
 // 获取选中的实例ID

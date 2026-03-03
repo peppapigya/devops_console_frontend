@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import {createRouter, createWebHistory} from 'vue-router'
 
 // ============================================================
 // 静态路由（无需登录/鉴权的基础路由）
@@ -22,6 +22,31 @@ const routes = [
         name: 'Dashboard',
         component: () => import('../views/Dashboard.vue'),
         meta: { title: '首页', icon: 'House' }
+      },
+      // CI/CD pipelines 隐藏/参数化路由
+      {
+        path: 'cicd/pipelines/create',
+        name: 'PipelineCreate',
+        component: () => import('../views/cicd/PipelineEditor.vue'),
+        meta: { title: '新建流水线', hidden: true }
+      },
+      {
+        path: 'cicd/pipelines/:id/edit',
+        name: 'PipelineEdit',
+        component: () => import('../views/cicd/PipelineEditor.vue'),
+        meta: { title: '编辑流水线', hidden: true }
+      },
+      {
+        path: 'cicd/pipelines/:id/runs',
+        name: 'PipelineRunList',
+        component: () => import('../views/cicd/PipelineRunList.vue'),
+        meta: { title: '运行历史', hidden: true }
+      },
+      {
+        path: 'cicd/pipelines/:id/runs/:runId',
+        name: 'PipelineRunDetail',
+        component: () => import('../views/cicd/PipelineRunDetail.vue'),
+        meta: { title: '运行详情', hidden: true }
       }
     ]
   },
@@ -74,8 +99,8 @@ router.beforeEach(async (to, from, next) => {
   if (!permStore.isLoaded) {
     try {
       await permStore.loadUserAndRoutes(router)
-      // 路由刚刚动态添加，需要重新导航让路由匹配生效
-      next({ ...to, replace: true })
+      // 路由刚刚动态添加，需要重新导航让路由匹配生效 (避免使用 name: 'NotFound' 导致再次404)
+      next({ path: to.path, query: to.query, hash: to.hash, replace: true })
     } catch (err) {
       console.error('动态路由加载故障:', err)
       // token 失效等场景，清除并跳登录

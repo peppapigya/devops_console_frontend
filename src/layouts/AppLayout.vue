@@ -60,7 +60,7 @@
           </template>
         </el-menu>
       </el-scrollbar>
-      
+
       <!-- 底部折叠按钮 -->
       <div class="sidebar-footer" @click="toggleCollapse">
         <el-icon :size="20" color="#909399">
@@ -73,7 +73,7 @@
     <!-- 右侧主体内容 -->
     <main class="main-content">
 <!-- ... (Existing Header and Content Wrapper code remains unchanged up to script) ... -->
-<!-- However, since replace_file_content expects contiguous blocks, I have to be careful. --> 
+<!-- However, since replace_file_content expects contiguous blocks, I have to be careful. -->
 <!-- If I am just replacing the menu area and data, I should do it in two chunks or use multi_replace. -->
 <!-- But wait, I need to replace the TEMPLATE part and the SCRIPT part. replace_file_content only does one block. -->
 <!-- I will use multi_replace_file_content. -->
@@ -83,8 +83,8 @@
         <div class="header-left">
            <!-- 实例选择器 (从旧版迁移过来) -->
            <div class="instance-selector">
-              <el-dropdown 
-                trigger="click" 
+              <el-dropdown
+                trigger="click"
                 placement="bottom-start"
                 @visible-change="handleDropdownVisible"
               >
@@ -119,7 +119,7 @@
                           </el-button>
                         </div>
                       </div>
-                      
+
                       <div class="filter-section">
                         <el-input v-model="searchQuery" placeholder="搜索实例..." size="small" clearable>
                            <template #prefix><el-icon><Search /></el-icon></template>
@@ -128,7 +128,9 @@
                            <el-option v-for="t in instanceTypes" :key="t.id" :label="t.type_name" :value="t.type_name" />
                         </el-select>
                          <el-select v-model="statusFilter" placeholder="状态" size="small" clearable>
-                          <el-option label="活跃" value="active" />
+                          <el-option label="活跃(旧)" value="active" />
+                          <el-option label="在线" value="online" />
+                          <el-option label="离线" value="offline" />
                           <el-option label="非活跃" value="inactive" />
                           <el-option label="错误" value="error" />
                         </el-select>
@@ -214,19 +216,31 @@
 </template>
 
 <script setup>
-import {ref, computed, onMounted, watch} from 'vue'
+import {computed, onMounted, ref, watch} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
-import {ElMessage, ElMessageBox} from 'element-plus'
+import {ElMessage} from 'element-plus'
 import {getInstanceList, getInstanceTypes} from '@/api/instance.js'
-import { setSelectedInstance, getSelectedInstanceType } from '@/stores/instanceStore.js'
-import { usePermissionStore } from '@/stores/permissionStore.js'
+import {getSelectedInstanceType, setSelectedInstance} from '@/stores/instanceStore.js'
+import {usePermissionStore} from '@/stores/permissionStore.js'
 import {
-  Monitor, Bell, User, ArrowDown, Setting, SwitchButton,
-  Sunny, Moon, House, DocumentCopy, Grid, CopyDocument, TrendCharts,
-  Connection, Plus, List, Search, Refresh,
-  DataLine, WarningFilled, Delete, MoreFilled, Box, Files, Folder, FolderOpened, DataBoard, Timer,
-  Expand, Fold, CaretBottom, Cpu, Coin, Ticket, Share, Operation, Document, Key, BellFilled, Histogram,
-  Top, Right, Lock, UserFilled, OfficeBuilding, Menu, ShoppingCart
+  ArrowDown,
+  Bell,
+  Box,
+  CaretBottom,
+  DataLine,
+  DocumentCopy,
+  Expand,
+  Fold,
+  List,
+  Monitor,
+  Moon,
+  Plus,
+  Refresh,
+  Search,
+  Sunny,
+  SwitchButton,
+  User,
+  WarningFilled
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -265,7 +279,7 @@ const filteredInstanceList = computed(() => {
   let result = [...instanceList.value]
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
-    result = result.filter(instance => 
+    result = result.filter(instance =>
       instance.name.toLowerCase().includes(query) ||
       instance.address.toLowerCase().includes(query)
     )
@@ -346,7 +360,7 @@ const fetchInstances = async () => {
     const response = await getInstanceList({ page: 1, page_size: 100 })
     const listData = response.data?.list || {}
     instanceList.value = listData.data || []
-    
+
     if (instanceList.value.length > 0 && !selectedInstance.value) {
       // 优先选择 elasticsearch 或 kubernetes，避免默认选中 prometheus
       const preferType = route.path.startsWith('/es') ? 'elasticsearch' : (route.path.startsWith('/k8s') ? 'kubernetes' : null)
@@ -357,7 +371,7 @@ const fetchInstances = async () => {
       if (!defaultInstance) {
           defaultInstance = instanceList.value[0]
       }
-      
+
       selectedInstance.value = defaultInstance.id
       setSelectedInstance(defaultInstance)
     }
@@ -378,7 +392,7 @@ const fetchInstanceTypes = async () => {
 // Utility
 const getTypeIcon = (type) => {
   const icons = {
-    elasticsearch: Monitor, kubernetes: Box, kibana: DataLine, 
+    elasticsearch: Monitor, kubernetes: Box, kibana: DataLine,
     logstash: DocumentCopy, filebeat: DocumentCopy, metricbeat: DocumentCopy, apm: WarningFilled
   }
   return icons[type] || Monitor
@@ -392,8 +406,8 @@ const getTypeColor = (type) => {
   return colors[type] || '#666'
 }
 
-const getStatusType = (status) => ({ active: 'success', inactive: 'info', error: 'danger' }[status] || 'info')
-const getStatusLabel = (status) => ({ active: '活跃', inactive: '非活跃', error: '异常' }[status] || status)
+const getStatusType = (status) => ({ active: 'success', online: 'success', offline: 'danger', inactive: 'info', error: 'danger' }[status] || 'info')
+const getStatusLabel = (status) => ({ active: '活跃(旧)', online: '在线', offline: '离线', inactive: '非活跃', error: '异常' }[status] || status)
 
 onMounted(() => {
   const savedTheme = localStorage.getItem('theme')

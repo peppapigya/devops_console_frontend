@@ -191,14 +191,20 @@
 </template>
 
 <script setup>
-import {ref, onMounted, computed} from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import {computed, onMounted, ref} from 'vue'
+import {useRoute, useRouter} from 'vue-router'
+import {ElMessage, ElMessageBox} from 'element-plus'
 import {
-  ArrowLeft, Edit, Delete, Connection, WarningFilled,
-  CircleCheck, CircleClose, Refresh
+  ArrowLeft,
+  CircleCheck,
+  CircleClose,
+  Connection,
+  Delete,
+  Edit,
+  Refresh,
+  WarningFilled
 } from '@element-plus/icons-vue'
-import { getInstanceDetail, deleteInstance, testConnection, getTestHistory } from '@/api/instance.js'
+import {getTestHistory} from '@/api/instance.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -240,6 +246,8 @@ const getTypeLabel = (type) => {
 const getStatusIcon = (status) => {
   const icons = {
     active: CircleCheck,
+    online: CircleCheck,
+    offline: CircleClose,
     warning: WarningFilled,
     error: CircleClose
   }
@@ -249,6 +257,8 @@ const getStatusIcon = (status) => {
 const getStatusType = (status) => {
   const types = {
     active: 'success',
+    online: 'success',
+    offline: 'danger',
     warning: 'warning',
     error: 'danger'
   }
@@ -257,7 +267,9 @@ const getStatusType = (status) => {
 
 const getStatusLabel = (status) => {
   const labels = {
-    active: '活跃',
+    active: '活跃(旧)',
+    online: '在线',
+    offline: '离线',
     warning: '警告',
     error: '错误'
   }
@@ -331,10 +343,10 @@ const handleDelete = async () => {
         type: 'warning'
       }
     )
-    
+
     // 模拟删除操作
     await new Promise(resolve => setTimeout(resolve, 500))
-    
+
     ElMessage.success('删除成功')
     router.push('/instances')
   } catch (error) {
@@ -353,11 +365,11 @@ const handleTestConnection = async () => {
   try {
     // 模拟测试连接
     await new Promise(resolve => setTimeout(resolve, 1000))
-    
+
     // 随机生成测试结果
     const isSuccessful = Math.random() > 0.3
     const responseTime = Math.floor(Math.random() * 200) + 20
-    
+
     if (isSuccessful) {
       ElMessage.success(`连接测试成功 (响应时间: ${responseTime}ms)`)
       instance.value.status = 'active'
@@ -367,10 +379,10 @@ const handleTestConnection = async () => {
       ElMessage.error(`连接测试失败: ${errorMsg}`)
       instance.value.status = 'error'
     }
-    
+
     // 更新实例状态
     instance.value.updatedAt = new Date().toISOString()
-    
+
     await refreshTestHistory()
   } catch (error) {
     const errorMsg = error.response?.data?.message || error.message || '连接测试失败'
@@ -387,7 +399,7 @@ const togglePasswordVisibility = (configId) => {
 const refreshTestHistory = async () => {
   try {
     const response = await getTestHistory(instanceId.value, { page_size: 10 })
-    
+
     // 使用后端返回的数据，并转换为前端需要的格式
     const rawTests = response.data.data.tests || response.data.data.test_list || []
     testHistory.value = rawTests.map(test => ({
@@ -397,7 +409,7 @@ const refreshTestHistory = async () => {
       responseTime: test.response_time,
       errorMessage: test.error_message
     }))
-    
+
     if (testHistory.value.length === 0) {
       ElMessage.info('暂无测试历史记录')
     } else {
@@ -411,7 +423,7 @@ const refreshTestHistory = async () => {
 
 const refreshOperationLogs = async () => {
   ElMessage.info('刷新操作日志...')
-  
+
   // 使用死数据
   const mockOperationLogs = [
     {
@@ -445,9 +457,9 @@ const refreshOperationLogs = async () => {
       timestamp: '2025-11-14T11:45:00Z'
     }
   ]
-  
+
   operationLogs.value = mockOperationLogs
-  
+
   await new Promise(resolve => setTimeout(resolve, 500))
   ElMessage.success('操作日志已更新')
 }

@@ -39,7 +39,9 @@
             <el-option label="Prometheus" value="prometheus" />
         </el-select>
         <el-select v-model="statusFilter" placeholder="状态筛选" clearable class="filter-item w-32">
-            <el-option label="活跃" value="active" />
+            <el-option label="活跃(旧)" value="active" />
+            <el-option label="在线" value="online" />
+            <el-option label="离线" value="offline" />
             <el-option label="非活跃" value="inactive" />
             <el-option label="错误" value="error" />
         </el-select>
@@ -174,15 +176,30 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import {computed, onMounted, ref} from 'vue'
+import {useRouter} from 'vue-router'
+import {ElMessage, ElMessageBox} from 'element-plus'
 import {
-  Plus, Refresh, RefreshLeft, Search, List, Grid, Edit, Delete, Connection, View,
-  CircleCheck, WarningFilled, CircleClose, Monitor, DataLine, DocumentCopy,
-  MoreFilled, Lock, Unlock, Platform, Location, Clock
+  Clock,
+  Connection,
+  DataLine,
+  Delete,
+  DocumentCopy,
+  Edit,
+  Grid,
+  List,
+  Location,
+  Lock,
+  Monitor,
+  Platform,
+  Plus,
+  Refresh,
+  RefreshLeft,
+  Search,
+  Unlock,
+  WarningFilled
 } from '@element-plus/icons-vue'
-import { getInstanceList, deleteInstance, testConnection } from '@/api/instance.js'
+import {deleteInstance, getInstanceList, testConnection} from '@/api/instance.js'
 
 const router = useRouter()
 
@@ -272,12 +289,12 @@ const getTypeTagType = (type) => {
 
 // 状态相关方法
 const getStatusLabel = (status) => {
-  const labels = { active: '活跃', inactive: '非活跃', error: '错误' }
+  const labels = { active: '活跃(旧)', online: '在线', offline: '离线', inactive: '非活跃', error: '错误' }
   return labels[status] || status
 }
 
 const getStatusType = (status) => {
-  const types = { active: 'success', inactive: 'info', error: 'danger' }
+  const types = { active: 'success', online: 'success', offline: 'danger', inactive: 'info', error: 'danger' }
   return types[status] || 'info'
 }
 
@@ -323,10 +340,10 @@ const fetchInstances = async () => {
     if (searchQuery.value) params.keyword = searchQuery.value
     if (typeFilter.value) params.type_name = typeFilter.value
     if (statusFilter.value) params.status = statusFilter.value
-    
+
     const response = await getInstanceList(params)
     const listData = response.data?.list || {}
-    
+
     instances.value = listData.data || []
     pagination.value.total = listData.total || 0
   } catch (error) {
@@ -351,7 +368,7 @@ const handleTest = async (instance) => {
   try {
     const response = await testConnection(instance.id)
     const testData = response.data?.test_result
-    
+
     if (testData?.test_result === 'success') {
       ElMessage.success(`${instance.name} 连接测试成功 (响应时间: ${testData.response_time}ms)`)
       instance.status = 'active'
@@ -377,7 +394,7 @@ const handleDelete = async (instance) => {
       '确认删除',
       { type: 'warning' }
     )
-    
+
     const response = await deleteInstance(instance.id)
     if (response.message === '删除成功') {
       ElMessage.success(`实例 "${instance.name}" 删除成功`)
@@ -421,7 +438,7 @@ const handleBatchTest = async () => {
   ElMessage.info('开始批量测试...')
   let successCount = 0
   let failCount = 0
-  
+
   for (const instance of selectedInstances.value) {
     try {
       await handleTest(instance)
@@ -440,7 +457,7 @@ const handleBatchDelete = async () => {
         for (const instance of selectedInstances.value) {
              try {
                 await deleteInstance(instance.id)
-                successCount++ 
+                successCount++
              } catch(e){}
         }
         ElMessage.success(`成功删除 ${successCount} 个实例`)
