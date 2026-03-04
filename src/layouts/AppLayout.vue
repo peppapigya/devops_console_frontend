@@ -108,8 +108,8 @@
                       <div class="page-header">
                         <h2>实例管理</h2>
                         <div class="header-actions">
-                          <el-button size="small" @click="$router.push('/instances')">
-                             <el-icon><List /></el-icon>实例列表
+                          <el-button size="small" @click="$router.push('/es/instances')">
+                             <el-icon><List /></el-icon>自发现列表
                           </el-button>
                           <el-button type="primary" size="small" @click="handleAddInstance">
                             <el-icon><Plus /></el-icon>添加实例
@@ -340,7 +340,7 @@ const selectInstance = (instanceId) => {
 }
 
 const handleAddInstance = () => {
-  router.push('/instances/add')
+  router.push('/es/instances/add')
 }
 
 const handleRefreshInstances = async () => {
@@ -407,7 +407,7 @@ const getTypeColor = (type) => {
 }
 
 const getStatusType = (status) => ({ active: 'success', online: 'success', offline: 'danger', inactive: 'info', error: 'danger' }[status] || 'info')
-const getStatusLabel = (status) => ({ active: '活跃(旧)', online: '在线', offline: '离线', inactive: '非活跃', error: '异常' }[status] || status)
+const getStatusLabel = (status) => ({ active: '在线', online: '在线', offline: '离线', inactive: '非活跃', error: '异常' }[status] || status)
 
 onMounted(() => {
   const savedTheme = localStorage.getItem('theme')

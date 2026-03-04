@@ -325,11 +325,11 @@ const formatDateTime = (timeStr) => {
 
 // 事件处理
 const handleBack = () => {
-  router.push('/instances')
+  router.push('/es/instances')
 }
 
 const handleEdit = () => {
-  router.push(`/instances/edit/${instanceId.value}`)
+  router.push(`/es/instances/edit/${instanceId.value}`)
 }
 
 const handleDelete = async () => {
@@ -348,7 +348,7 @@ const handleDelete = async () => {
     await new Promise(resolve => setTimeout(resolve, 500))
 
     ElMessage.success('删除成功')
-    router.push('/instances')
+    router.push('/es/instances')
   } catch (error) {
     if (error.message !== 'cancel') {
       ElMessage.error('删除失败: ' + error.message)
@@ -548,7 +548,7 @@ const loadInstanceData = async () => {
 
     if (!instance.value) {
       ElMessage.error('实例不存在')
-      router.push('/instances')
+      router.push('/es/instances')
       return
     }
 
@@ -580,7 +580,7 @@ const loadInstanceData = async () => {
 
   } catch (error) {
     ElMessage.error('加载实例数据失败: ' + error.message)
-    router.push('/instances')
+    router.push('/es/instances')
   } finally {
     loading.value = false
   }

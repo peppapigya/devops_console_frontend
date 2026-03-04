@@ -150,10 +150,10 @@
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="viewDetails(row)">详情</el-button>
-            <el-button 
-                type="warning" 
-                link 
-                size="small" 
+            <el-button
+                type="warning"
+                link
+                size="small"
                 @click="restartNodeHandler(row)"
                 :disabled="row.status === '离线'"
             >
@@ -196,17 +196,17 @@
               </el-descriptions-item>
               <el-descriptions-item label="JVM堆内存" span="2">
                    <div class="w-full">
-                       <el-progress 
-                         :percentage="currentNode.memoryUsage || 0" 
-                         :color="getProgressColor(currentNode.memoryUsage || 0)" 
-                         :stroke-width="15" 
+                       <el-progress
+                         :percentage="currentNode.memoryUsage || 0"
+                         :color="getProgressColor(currentNode.memoryUsage || 0)"
+                         :stroke-width="15"
                          :text-inside="true"
                        />
                    </div>
               </el-descriptions-item>
             </el-descriptions>
           </el-tab-pane>
-          
+
           <!-- 系统信息 -->
           <el-tab-pane label="系统信息" name="system">
              <el-descriptions :column="2" border>
@@ -228,7 +228,7 @@
                  <el-descriptions-item label="JVM版本">{{ currentNode.jvm?.version || '-' }}</el-descriptions-item>
                  <el-descriptions-item label="供应商">{{ currentNode.jvm?.vm_vendor || '-' }}</el-descriptions-item>
              </el-descriptions>
-             
+
              <div class="mt-4">
                  <h4 class="mb-2">GC收集器详情</h4>
                  <el-table :data="getGCCollectors()" stripe border>
@@ -248,11 +248,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Refresh, Connection, Warning, CircleCheck, CircleClose } from '@element-plus/icons-vue'
-import { getNodes, getNodeStats, restartNode } from '@/api/es/node.js'
-import { getSelectedInstanceId } from '@/stores/instanceStore'
+import {computed, onMounted, reactive, ref} from 'vue'
+import {ElMessage, ElMessageBox} from 'element-plus'
+import {CircleCheck, CircleClose, Connection, Refresh, Search, Warning} from '@element-plus/icons-vue'
+import {getNodes, getNodeStats, restartNode} from '@/api/es/node.js'
+import {getSelectedInstanceId} from '@/stores/instanceStore'
 
 // 状态和数据
 const loading = ref(false)
@@ -273,8 +273,8 @@ const stats = reactive({
 const filteredNodes = computed(() => {
   if (!searchQuery.value) return nodes.value
   const query = searchQuery.value.toLowerCase()
-  return nodes.value.filter(node => 
-    node.name.toLowerCase().includes(query) || 
+  return nodes.value.filter(node =>
+    node.name.toLowerCase().includes(query) ||
     node.ip.includes(query)
   )
 })
@@ -333,25 +333,24 @@ const refreshData = async () => {
         getNodes(instanceId),
         getNodeStats(instanceId)
     ])
-    
-    // Process nodes data (mocked/simplified logic for now based on API response structure)
-    // Assume API returns a map of nodes
-    const nodesData = nodesRes.data?.nodes || {}
-    const statsData = statsRes.data?.nodes || {}
-    
+
+    // Assume API returns a map of nodes inside raw_response
+    const nodesData = nodesRes.data?.raw_response?.nodes || {}
+    const statsData = statsRes.data?.raw_response?.nodes || {}
+
     // Transform to array
     const nodeList = Object.keys(nodesData).map(nodeId => {
         const nodeInfo = nodesData[nodeId]
         const nodeStats = statsData[nodeId] || {}
-        
+
         // Calculate status
         let status = '在线'
         if (!nodeInfo) status = '离线'
-        
+
         return {
             id: nodeId,
             name: nodeInfo.name,
-            ip: nodeInfo.ip, 
+            ip: nodeInfo.ip,
             host: nodeInfo.host,
             version: nodeInfo.version,
             transportAddress: nodeInfo.transport_address,
@@ -361,7 +360,7 @@ const refreshData = async () => {
             jvm: nodeInfo.jvm,
             os: nodeInfo.os,
             process: nodeInfo.process,
-            
+
             // Stats
             cpuUsage: nodeStats.os?.cpu?.percent || 0,
             loadAverage: nodeStats.os?.cpu?.load_average?.['1m'] || 0,
@@ -371,20 +370,20 @@ const refreshData = async () => {
             diskUsage: nodeStats.fs?.total?.total_in_bytes ? Math.round((nodeStats.fs.total.total_in_bytes - nodeStats.fs.total.available_in_bytes) * 100 / nodeStats.fs.total.total_in_bytes) : 0,
             totalDisk: nodeStats.fs?.total?.total_in_bytes || 0,
             availableDisk: nodeStats.fs?.total?.available_in_bytes || 0,
-            
+
             lastHeartbeat: Date.now(), // Mock
             status: status
         }
     })
-    
+
     nodes.value = nodeList
-    
+
     // Update stats
     stats.totalNodes = nodeList.length
     stats.activeNodes = nodeList.filter(n => n.status === '在线').length
     stats.failedNodes = nodeList.filter(n => n.status === '离线').length
     stats.warningNodes = nodeList.filter(n => n.status === '警告').length
-    
+
     ElMessage.success('刷新成功')
   } catch (e) {
       console.error(e)
@@ -407,7 +406,7 @@ const restartNodeHandler = async (row) => {
             confirmButtonText: '确定重启',
             cancelButtonText: '取消'
         })
-        
+
         const instanceId = getSelectedInstanceId()
         await restartNode(instanceId, row.id)
         ElMessage.success('重启命令已发送')

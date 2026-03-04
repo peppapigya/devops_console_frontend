@@ -39,7 +39,7 @@
             <el-option label="Prometheus" value="prometheus" />
         </el-select>
         <el-select v-model="statusFilter" placeholder="状态筛选" clearable class="filter-item w-32">
-            <el-option label="活跃(旧)" value="active" />
+            <el-option label="在线" value="active" />
             <el-option label="在线" value="online" />
             <el-option label="离线" value="offline" />
             <el-option label="非活跃" value="inactive" />
@@ -52,8 +52,8 @@
         </el-button-group>
         <el-divider direction="vertical" class="mx-4" />
         <el-radio-group v-model="viewMode" size="small">
-            <el-radio-button label="table"><el-icon><List /></el-icon></el-radio-button>
-            <el-radio-button label="card"><el-icon><Grid /></el-icon></el-radio-button>
+            <el-radio-button value="table"><el-icon><List /></el-icon></el-radio-button>
+            <el-radio-button value="card"><el-icon><Grid /></el-icon></el-radio-button>
         </el-radio-group>
       </div>
     </el-card>
@@ -289,7 +289,7 @@ const getTypeTagType = (type) => {
 
 // 状态相关方法
 const getStatusLabel = (status) => {
-  const labels = { active: '活跃(旧)', online: '在线', offline: '离线', inactive: '非活跃', error: '错误' }
+  const labels = { active: '在线', online: '在线', offline: '离线', inactive: '非活跃', error: '错误' }
   return labels[status] || status
 }
 
@@ -356,11 +356,11 @@ const fetchInstances = async () => {
 }
 
 const handleAdd = () => {
-  router.push('/instances/add')
+  router.push('/es/instances/add')
 }
 
 const handleEdit = (instance) => {
-  router.push(`/instances/edit/${instance.id}`)
+  router.push(`/es/instances/edit/${instance.id}`)
 }
 
 const handleTest = async (instance) => {

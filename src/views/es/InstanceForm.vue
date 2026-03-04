@@ -97,14 +97,14 @@
                    <el-button link type="primary" size="small" @click="resetAuthConfig">重置</el-button>
                 </div>
              </template>
-             
+
              <el-form-item label="认证方式" prop="authType">
                 <el-radio-group v-model="formData.authType" class="w-full flex-wrap">
-                   <el-radio-button label="none">无认证</el-radio-button>
-                   <el-radio-button label="basic">基础认证 (Basic)</el-radio-button>
-                   <el-radio-button label="api_key">API 密钥</el-radio-button>
-                   <el-radio-button label="token">Token 令牌</el-radio-button>
-                   <el-radio-button v-if="isKubernetesType" label="kubeconfig">Kubeconfig</el-radio-button>
+                   <el-radio-button value="none">无认证</el-radio-button>
+                   <el-radio-button value="basic">基础认证 (Basic)</el-radio-button>
+                   <el-radio-button value="api_key">API 密钥</el-radio-button>
+                   <el-radio-button value="token">Token 令牌</el-radio-button>
+                   <el-radio-button v-if="isKubernetesType" value="kubeconfig">Kubeconfig</el-radio-button>
                 </el-radio-group>
              </el-form-item>
 
@@ -147,7 +147,7 @@
                        <el-input v-model="formData.token" type="textarea" :rows="3" placeholder="Bearer Token" />
                     </el-form-item>
                  </div>
-                 
+
                  <!-- Kubeconfig -->
                  <div v-if="formData.authType === 'kubeconfig'">
                     <el-form-item label="Kubeconfig 文件" prop="kubeconfigFile">
@@ -202,15 +202,23 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, markRaw } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import {ElMessage, ElMessageBox} from 'element-plus'
+import {computed, markRaw, onMounted, reactive, ref} from 'vue'
+import {useRoute, useRouter} from 'vue-router'
+import {ElMessage} from 'element-plus'
 import {
-  ArrowLeft, Check, Connection, 
-  Monitor, DataLine, DocumentCopy, CircleCheck, CircleClose, Box, UploadFilled,
-  InfoFilled, Lock, Setting, WarningFilled
+  ArrowLeft,
+  Box,
+  Check,
+  Connection,
+  DataLine,
+  DocumentCopy,
+  InfoFilled,
+  Lock,
+  Monitor,
+  Setting,
+  WarningFilled
 } from '@element-plus/icons-vue'
-import { getInstanceDetail, addInstance, updateInstance, testConnection, getInstanceTypes } from '@/api/instance.js'
+import {addInstance, getInstanceDetail, getInstanceTypes, testConnection, updateInstance} from '@/api/instance.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -308,7 +316,7 @@ const resetAuthConfig = () => {
 const handleSave = async () => {
     if (!formRef.value) return
     await formRef.value.validate()
-    
+
     saving.value = true
     try {
         const typeId = getInstanceTypeId(formData.instanceType)
@@ -316,8 +324,8 @@ const handleSave = async () => {
             throw new Error('未找到该实例类型')
         }
 
-        const payload = { 
-            id: formData.id,
+        const payload = {
+            id: Number(formData.id) || 0,
             instance_type_id: typeId,
             name: formData.name,
             address: formData.address,
@@ -330,7 +338,7 @@ const handleSave = async () => {
                 config_value: getAuthConfigValue()
             }
         }
-        
+
         if (isEdit.value) {
             await updateInstance(payload)
             ElMessage.success('更新成功')
@@ -338,7 +346,7 @@ const handleSave = async () => {
             await addInstance(payload)
             ElMessage.success('创建成功')
         }
-        router.push('/instances')
+        router.push('/es/instances')
     } catch (e) {
         ElMessage.error(e.message || '保存失败')
     } finally {
@@ -350,8 +358,8 @@ const handleTestConnection = async () => {
     testing.value = true
     try {
         const typeId = getInstanceTypeId(formData.instanceType)
-        const payload = { 
-            id: formData.id,
+        const payload = {
+            id: Number(formData.id) || 0,
             instance_type_id: typeId,
             name: formData.name,
             address: formData.address,
@@ -363,7 +371,15 @@ const handleTestConnection = async () => {
                 config_value: getAuthConfigValue()
             }
         }
-        await testConnection(payload)
+        // Since testConnection API expects { instance_id: ID } but we are sending
+        // a full object payload from the form meant for testing before saving,
+        // we'll send the payload directly via the configured axios instance
+        // or check if the backend supports this dynamic testing endpoint format.
+        //
+        // The backend error `ConnectionTestRequest.instance_id of type uint` indicates
+        // the endpoint ONLY accepts `{"instance_id": 10}`. Let's send only the ID.
+
+        await testConnection(Number(formData.id) || 0)
         ElMessage.success('连接测试成功')
     } catch (e) {
         ElMessage.error('连接测试失败: ' + (e.message || '网络错误'))
@@ -415,14 +431,69 @@ onMounted(async () => {
         const id = route.params.id
         try {
             const res = await getInstanceDetail(id)
-            Object.assign(formData, res.data)
+            const data = res.data?.instance || res.data
+
+            // Map basic fields
+            formData.id = id
+            formData.name = data.resource_name || data.name || ''
+            formData.address = data.address || ''
+            formData.httpsEnabled = !!data.https_enabled
+            formData.skipSslVerify = !!data.skip_ssl_verify
+            formData.autoMonitor = true // default for now
+            formData.enableAlert = false // default for now
+
             // Parse address protocol
             if (formData.httpsEnabled) addressProtocol.value = 'https'
-            
-            // FIXME Backend instance mapping back to Flat form
-            if (res.data.instance_type?.type_name) {
-                formData.instanceType = res.data.instance_type.type_name
+
+            if (data.instance_type?.type_name) {
+                formData.instanceType = data.instance_type.type_name
+            } else if (data.resource_type === 'instance') {
+                // Determine instance type visually or based on properties if instance_type is missing
+                formData.instanceType = 'elasticsearch'
             }
+
+            // Parse auth config
+            if (data.auth_configs) {
+                try {
+                    // Try parsing if it's a string, or use the object directly
+                    let authConfigsArr = typeof data.auth_configs === 'string'
+                        ? JSON.parse(data.auth_configs)
+                        : data.auth_configs;
+
+                    // If it's an array, get the first item (default config)
+                    const parsedAuth = Array.isArray(authConfigsArr)
+                        ? (authConfigsArr.length > 0 ? authConfigsArr[0] : null)
+                        : authConfigsArr;
+
+                    if (parsedAuth && parsedAuth.auth_type) {
+                        formData.authType = parsedAuth.auth_type
+
+                        const configStr = parsedAuth.config_value
+                        if (configStr) {
+                             if (formData.authType === 'basic') {
+                                 const parsed = typeof configStr === 'string' ? JSON.parse(configStr) : configStr
+                                 if (parsed) {
+                                    formData.username = parsed.username || ''
+                                    formData.password = parsed.password || ''
+                                 }
+                             } else if (formData.authType === 'api_key') {
+                                 const parsed = typeof configStr === 'string' ? JSON.parse(configStr) : configStr
+                                 if (parsed) {
+                                    formData.apiId = parsed.id || ''
+                                    formData.apiKey = parsed.key || ''
+                                 }
+                             } else if (formData.authType === 'token') {
+                                 formData.token = configStr
+                             } else if (formData.authType === 'kubeconfig') {
+                                 formData.kubeconfigContent = configStr
+                             }
+                        }
+                    }
+                } catch (pe) {
+                    console.error("Failed to parse auth config", pe)
+                }
+            }
+
         } catch (e) {
             ElMessage.error('加载实例详情失败')
         }

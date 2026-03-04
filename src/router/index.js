@@ -47,6 +47,25 @@ const routes = [
         name: 'PipelineRunDetail',
         component: () => import('../views/cicd/PipelineRunDetail.vue'),
         meta: { title: '运行详情', hidden: true }
+      },
+      // Elasticsearch 实例隐藏路由
+      {
+        path: 'es/instances/add',
+        name: 'InstanceAdd',
+        component: () => import('../views/es/InstanceForm.vue'),
+        meta: { title: '新增实例', hidden: true }
+      },
+      {
+        path: 'es/instances/edit/:id',
+        name: 'InstanceEdit',
+        component: () => import('../views/es/InstanceForm.vue'),
+        meta: { title: '编辑实例', hidden: true }
+      },
+      {
+        path: 'es/instances/:id',
+        name: 'InstanceDetail',
+        component: () => import('../views/es/InstanceDetail.vue'),
+        meta: { title: '实例详情', hidden: true }
       }
     ]
   },
