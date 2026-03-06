@@ -36,7 +36,11 @@
           </template>
         </el-table-column>
         <el-table-column prop="remark" label="备注" min-width="160" />
-        <el-table-column prop="createdAt" label="创建时间" min-width="160" />
+        <el-table-column label="创建时间" min-width="160" prop="createdAt">
+          <template #default="{ row }">
+            {{ formatTime(row.createdAt) }}
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="130" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="openDialog(row)">编辑</el-button>
@@ -79,10 +83,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
-import { Plus } from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { getPositionList, createPosition, updatePosition, deletePosition } from '@/api/system/position.js'
+import {onMounted, reactive, ref} from 'vue'
+import {Plus} from '@element-plus/icons-vue'
+import {ElMessage, ElMessageBox} from 'element-plus'
+import dayjs from 'dayjs'
+import {createPosition, deletePosition, getPositionList, updatePosition} from '@/api/system/position.js'
 
 const loading = ref(false), submitting = ref(false)
 const tableData = ref([])
@@ -95,6 +100,8 @@ const formRules = {
   name: [{ required: true, message: '请输入岗位名称', trigger: 'blur' }],
   code: [{ required: true, message: '请输入岗位编码', trigger: 'blur' }]
 }
+
+const formatTime = (time) => time ? dayjs(time).format('YYYY-MM-DD HH:mm:ss') : '-'
 
 onMounted(fetchList)
 

@@ -1,43 +1,69 @@
 <template>
   <div class="page-container">
-    <!-- 搜索栏 -->
-    <el-card class="search-card" shadow="never">
-      <el-form :model="searchForm" inline>
-        <el-form-item label="用户名">
-          <el-input v-model="searchForm.username" placeholder="请输入用户名" clearable style="width:180px" />
-        </el-form-item>
-        <el-form-item label="昵称">
-          <el-input v-model="searchForm.nickname" placeholder="请输入昵称" clearable style="width:180px" />
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="searchForm.status" placeholder="全部" clearable style="width:120px">
-            <el-option label="启用" :value="1" />
-            <el-option label="停用" :value="0" />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" :icon="Search" @click="fetchList">搜索</el-button>
-          <el-button @click="resetSearch">重置</el-button>
-        </el-form-item>
-      </el-form>
+    <el-card class="page-header-card mb-20" shadow="never">
+      <div class="page-header">
+        <div class="header-left">
+          <div class="header-icon-wrapper">
+            <el-icon :size="24"><User /></el-icon>
+          </div>
+          <div class="header-title-wrapper">
+            <h2>用户管理</h2>
+            <p class="subtitle">管理系统用户及权限分配</p>
+          </div>
+        </div>
+        <div class="header-right">
+          <el-button v-if="permStore.hasPerm('sys:user:add')" :icon="Plus" type="primary" @click="openDialog()">新增用户</el-button>
+          <el-button :icon="Refresh" @click="fetchList">刷新</el-button>
+        </div>
+      </div>
     </el-card>
 
-    <!-- 操作栏 -->
-    <el-card class="table-card" shadow="never">
-      <div class="toolbar">
-        <span class="title">用户列表</span>
-        <el-button v-if="permStore.hasPerm('sys:user:add')" type="primary" :icon="Plus" @click="openDialog()">新增用户</el-button>
+    <!-- Filters -->
+    <el-card class="content-card mb-20" shadow="never">
+      <div class="filter-row flex items-center gap-4">
+        <el-input
+          v-model="searchForm.username"
+          :prefix-icon="Search"
+          class="filter-item w-64"
+          clearable
+          placeholder="搜索用户名"
+          @keyup.enter="fetchList"
+        />
+        <el-input
+          v-model="searchForm.nickname"
+          :prefix-icon="Search"
+          class="filter-item w-40"
+          clearable
+          placeholder="搜索昵称"
+          @keyup.enter="fetchList"
+        />
+        <el-select v-model="searchForm.status" class="filter-item w-32" clearable placeholder="状态筛选">
+          <el-option :value="1" label="启用" />
+          <el-option :value="0" label="停用" />
+        </el-select>
+        <div class="flex-spacer flex-1"></div>
+        <el-button-group>
+          <el-button :icon="Search" :loading="loading" type="primary" @click="fetchList">搜索</el-button>
+          <el-button :icon="RefreshLeft" @click="resetSearch">重置</el-button>
+        </el-button-group>
       </div>
+    </el-card>
 
-      <el-table :data="tableData" v-loading="loading" border stripe>
-        <el-table-column prop="username" label="用户名" min-width="120" />
+    <!-- Table View -->
+    <el-card class="content-card" shadow="never">
+      <el-table v-loading="loading" :data="tableData" stripe style="width: 100%">
+        <el-table-column label="用户名" min-width="120" prop="username">
+          <template #default="{ row }">
+            <span class="font-medium text-main">{{ row.username }}</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="nickname" label="昵称" min-width="120" />
         <el-table-column prop="deptName" label="部门" min-width="120" />
-        <el-table-column prop="email" label="邮箱" min-width="160" />
+        <el-table-column label="邮箱" min-width="160" prop="email" show-overflow-tooltip />
         <el-table-column prop="phone" label="手机号" min-width="130" />
         <el-table-column label="角色" min-width="150">
           <template #default="{ row }">
-            <el-tag v-for="r in row.roles" :key="r.id" class="mr-1" size="small" type="info">{{ r.name }}</el-tag>
+            <el-tag v-for="r in row.roles" :key="r.id" :type="r.id === 1 ? 'danger' : 'primary'" class="mr-1" effect="light" size="small">{{ r.name }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="状态" width="90">
@@ -45,26 +71,31 @@
             <el-switch :model-value="row.status === 1" :disabled="!permStore.hasPerm('sys:user:status')" @change="(v) => handleStatusChange(row, v)" />
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="创建时间" min-width="160" />
+        <el-table-column label="创建时间" min-width="160" prop="createdAt">
+          <template #default="{ row }">
+            {{ formatTime(row.createdAt) }}
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
-            <el-button v-if="permStore.hasPerm('sys:user:edit')" link type="primary" @click="openDialog(row)">编辑</el-button>
-            <el-button v-if="permStore.hasPerm('sys:user:resetpwd')" link type="warning" @click="handleResetPwd(row)">重置密码</el-button>
-            <el-button v-if="permStore.hasPerm('sys:user:del')" link type="danger" @click="handleDelete(row)">删除</el-button>
+            <el-button v-if="permStore.hasPerm('sys:user:edit')" link size="small" type="primary" @click="openDialog(row)">编辑</el-button>
+            <el-button v-if="permStore.hasPerm('sys:user:resetpwd')" link size="small" type="warning" @click="handleResetPwd(row)">重置密码</el-button>
+            <el-button v-if="permStore.hasPerm('sys:user:del')" link size="small" type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
 
-      <el-pagination
-        class="pagination"
-        v-model:current-page="pagination.page"
-        v-model:page-size="pagination.pageSize"
-        :page-sizes="[10, 20, 50]"
-        :total="pagination.total"
-        layout="total, sizes, prev, pager, next"
-        @size-change="fetchList"
-        @current-change="fetchList"
-      />
+      <div class="pagination">
+        <el-pagination
+          v-model:current-page="pagination.page"
+          v-model:page-size="pagination.pageSize"
+          :page-sizes="[10, 20, 50]"
+          :total="pagination.total"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="fetchList"
+          @current-change="fetchList"
+        />
+      </div>
     </el-card>
 
     <!-- 新增/编辑 Dialog -->
@@ -159,15 +190,23 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
-import { Search, Plus } from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { SHA256 } from 'crypto-js'
-import { getUserList, createUser, updateUser, deleteUser, updateUserStatus, resetUserPassword } from '@/api/system/user.js'
-import { getDeptTree } from '@/api/system/dept.js'
-import { getAllPositions } from '@/api/system/position.js'
-import { getAllRoles } from '@/api/system/role.js'
-import { usePermissionStore } from '@/stores/permissionStore.js'
+import {onMounted, reactive, ref} from 'vue'
+import {Plus, Refresh, RefreshLeft, Search, User} from '@element-plus/icons-vue'
+import {ElMessage, ElMessageBox} from 'element-plus'
+import {SHA256} from 'crypto-js'
+import dayjs from 'dayjs'
+import {
+  createUser,
+  deleteUser,
+  getUserList,
+  resetUserPassword,
+  updateUser,
+  updateUserStatus
+} from '@/api/system/user.js'
+import {getDeptTree} from '@/api/system/dept.js'
+import {getAllPositions} from '@/api/system/position.js'
+import {getAllRoles} from '@/api/system/role.js'
+import {usePermissionStore} from '@/stores/permissionStore.js'
 
 const permStore = usePermissionStore()
 const loading = ref(false)
@@ -176,6 +215,8 @@ const tableData = ref([])
 const deptOptions = ref([])
 const positionOptions = ref([])
 const roleOptions = ref([])
+
+const formatTime = (time) => time ? dayjs(time).format('YYYY-MM-DD HH:mm:ss') : '-'
 
 const pagination = reactive({ page: 1, pageSize: 10, total: 0 })
 const searchForm = reactive({ username: '', nickname: '', status: null })
@@ -317,11 +358,37 @@ async function handleDelete(row) {
 </script>
 
 <style scoped>
-.page-container { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
-.search-card {}
-.table-card {}
-.toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.title { font-size: 15px; font-weight: 600; }
-.pagination { margin-top: 12px; display: flex; justify-content: flex-end; }
+.page-container { padding: 16px; display: flex; flex-direction: column; gap: 0; }
+.header-icon-wrapper {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: var(--primary-color, #409eff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.header-left { display: flex; align-items: center; gap: 12px; }
+.header-title-wrapper h2 { margin: 0; font-size: 18px; color: var(--text-main, #303133); }
+.header-title-wrapper .subtitle { margin: 0; font-size: 12px; color: var(--text-sub, #909399); }
+.header-right { display: flex; align-items: center; gap: 12px; }
+
+.flex { display: flex; }
+.items-center { align-items: center; }
+.gap-4 { gap: 16px; }
+.mb-20 { margin-bottom: 20px; }
+.w-64 { width: 16rem; }
+.w-40 { width: 10rem; }
+.w-32 { width: 8rem; }
+.flex-1 { flex: 1; }
 .mr-1 { margin-right: 4px; }
+.pagination { margin-top: 16px; display: flex; justify-content: flex-end; }
+.text-main { color: var(--text-main, #303133); }
+.font-medium { font-weight: 500; }
 </style>

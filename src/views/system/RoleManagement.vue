@@ -36,7 +36,11 @@
           </template>
         </el-table-column>
         <el-table-column prop="remark" label="备注" min-width="180" />
-        <el-table-column prop="createdAt" label="创建时间" min-width="160" />
+        <el-table-column label="创建时间" min-width="160" prop="createdAt">
+          <template #default="{ row }">
+            {{ formatTime(row.createdAt) }}
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="190" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="openDialog(row)">编辑</el-button>
@@ -101,11 +105,12 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
-import { Plus } from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { getRoleList, createRole, updateRole, deleteRole, getRoleMenuIds, assignRoleMenus } from '@/api/system/role.js'
-import { getMenuTree } from '@/api/system/menu.js'
+import {onMounted, reactive, ref} from 'vue'
+import {Plus} from '@element-plus/icons-vue'
+import {ElMessage, ElMessageBox} from 'element-plus'
+import dayjs from 'dayjs'
+import {assignRoleMenus, createRole, deleteRole, getRoleList, getRoleMenuIds, updateRole} from '@/api/system/role.js'
+import {getMenuTree} from '@/api/system/menu.js'
 
 const loading = ref(false), submitting = ref(false)
 const tableData = ref([])
@@ -124,6 +129,8 @@ const menuTreeRef = ref(null)
 const menuTree = ref([])
 const checkedMenuIds = ref([])
 const currentRole = ref(null)
+
+const formatTime = (time) => time ? dayjs(time).format('YYYY-MM-DD HH:mm:ss') : '-'
 
 onMounted(fetchList)
 
