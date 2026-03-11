@@ -10,7 +10,7 @@ RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
     chmod -R +x node_modules/.bin && \
     ./node_modules/.bin/vite build
 
-FROM nswr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/nginx:1.27.4-alpine
+FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/nginx:1.27.4-alpine
 
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories && \
 	apk add --no-cache wget
@@ -22,5 +22,4 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 EXPOSE 8081
 EXPOSE 9200
 
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3
 CMD ["nginx","-g","daemon off;"]
