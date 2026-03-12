@@ -35,6 +35,9 @@ metadata:
     component: devops-frontend
 spec:
   type: NodePort
+  selector:
+    app: devops
+    component: devops-frontend
   ports:
     - port: 8081
       targetPort: http
