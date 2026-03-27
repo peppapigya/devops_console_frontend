@@ -322,6 +322,7 @@ import {
   deleteHost, batchDeleteHosts, getHostStats,
   createHostGroup, updateHostGroup, deleteHostGroup
 } from '@/api/asset.js'
+import { encryptPassword } from '@/utils/crypto.js'
 
 // ===================== 状态 =====================
 const loading = ref(false)
@@ -548,6 +549,13 @@ async function handleHostSubmit() {
   submitting.value = true
   try {
     const payload = { ...hostForm }
+    if (payload.authType === 'password') {
+      if (payload.password) {
+        payload.password = encryptPassword(payload.password)
+      } else {
+        delete payload.password
+      }
+    }
     if (payload.id) { await updateHost(payload.id, payload) } else { await createHost(payload) }
     ElMessage.success('操作成功')
     hostDialogVisible.value = false

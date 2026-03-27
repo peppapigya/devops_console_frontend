@@ -16,7 +16,6 @@ export default defineConfig({
         // target: 'http://172.20.0.3:8081',
         target: 'http://127.0.0.1:8081',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '/api')
       },
       '/ws': {
         // target: 'http://172.20.0.3:8081',

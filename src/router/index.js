@@ -66,6 +66,31 @@ const routes = [
         name: 'InstanceDetail',
         component: () => import('../views/es/InstanceDetail.vue'),
         meta: { title: '实例详情', hidden: true }
+      },
+      // 任务调度隐藏路由
+      {
+        path: 'task-scheduler/workflows/new',
+        name: 'WorkflowCreate',
+        component: () => import('../views/task-scheduler/WorkflowEditor.vue'),
+        meta: { title: '新建工作流', hidden: true }
+      },
+      {
+        path: 'task-scheduler/workflows/:id/edit',
+        name: 'WorkflowEdit',
+        component: () => import('../views/task-scheduler/WorkflowEditor.vue'),
+        meta: { title: '编辑工作流', hidden: true }
+      },
+      {
+        path: 'task-scheduler/executions',
+        name: 'ExecutionHistory',
+        component: () => import('../views/task-scheduler/ExecutionHistory.vue'),
+        meta: { title: '执行历史', icon: 'Document' }
+      },
+      {
+        path: 'task-scheduler/executions/:id/logs',
+        name: 'ExecutionLog',
+        component: () => import('../views/task-scheduler/ExecutionLog.vue'),
+        meta: { title: '执行日志', hidden: true }
       }
     ]
   },
