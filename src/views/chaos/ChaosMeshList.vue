@@ -305,7 +305,8 @@ const faultTypes = [
 const hasRunningExperiments = computed(() =>
   experimentList.value.some(e => {
     const s = (e.status || '').toLowerCase()
-    return s === 'running'
+    // 只要不是明确的结束/暂停状态（如 Unknown、Running等），就保持静默轮询更新
+    return !['finished', 'failed', 'paused'].includes(s)
   })
 )
 
@@ -433,8 +434,10 @@ const fetchNamespaces = async () => {
   }
 }
 
-const fetchData = async () => {
-  loading.value = true
+const fetchData = async (silent = false) => {
+  if (!silent) {
+    loading.value = true
+  }
   try {
     const instanceId = getSelectedInstanceId()
     const ns = selectedNamespace.value || 'all'
@@ -450,18 +453,21 @@ const fetchData = async () => {
     total.value = experimentList.value.length
     lastUpdated.value = dayjs().format('HH:mm:ss')
   } catch (e) {
-    ElMessage.error('获取混沌实验列表失败')
+    if (!silent) ElMessage.error('获取混沌实验列表失败')
     experimentList.value = []
     total.value = 0
   } finally {
-    loading.value = false
+    if (!silent) {
+      loading.value = false
+    }
   }
 }
 
 const startPolling = () => {
   pollingTimer = setInterval(() => {
     if (hasRunningExperiments.value) {
-      fetchData()
+      // 静默拉取，不触发 loading 动画，防止列表闪烁
+      fetchData(true)
     }
   }, 5000)
 }
