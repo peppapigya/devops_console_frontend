@@ -13,9 +13,13 @@
          </div>
          <div class="header-right">
             <el-button @click="handleCancel">取消</el-button>
-            <el-button @click="handleTestConnection" :loading="testing" :disabled="!formData.name || !formData.address">
-              <el-icon><Connection /></el-icon> 测试连接
-            </el-button>
+            <el-tooltip :disabled="!!formData.id" content="新建实例请先点击保存，之后再进行测试连接" placement="bottom">
+              <span class="inline-block mr-3">
+                <el-button :disabled="!formData.id" :loading="testing" @click="handleTestConnection">
+                  <el-icon><Connection /></el-icon> 测试连接
+                </el-button>
+              </span>
+            </el-tooltip>
             <el-button type="primary" @click="handleSave" :loading="saving">
               <el-icon><Check /></el-icon> 保存
             </el-button>
