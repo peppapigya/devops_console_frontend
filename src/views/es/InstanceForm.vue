@@ -272,7 +272,11 @@ const formData = reactive({
   requestTimeout: 10
 })
 
-const isKubernetesType = computed(() => formData.instanceType === 'kubernetes')
+const isKubernetesType = computed(() => {
+  if (!formData.instanceType) return false
+  const typeLower = formData.instanceType.toLowerCase()
+  return typeLower === 'kubernetes' || typeLower === 'k8s'
+})
 
 // 表单验证规则
 const formRules = {
@@ -412,7 +416,8 @@ const loadInstanceTypes = async () => {
         const types = res.data?.instance_types || res.data
         if (types && Array.isArray(types)) {
             instanceTypes.value = types.map(type => {
-                const config = typeDisplayConfig[type.type_name] || {}
+                const typeNameLower = (type.type_name || '').toLowerCase()
+                const config = typeDisplayConfig[typeNameLower] || {}
                 return {
                     id: type.id,
                     label: type.display_name || type.type_name,
