@@ -280,7 +280,10 @@ const formRules = {
   name: [{ required: true, message: '请输入实例名称', trigger: 'blur' }],
   address: [{ required: true, message: '请输入实例地址', trigger: 'blur' }],
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
+  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
+  apiId: [{ required: true, message: '请输入API ID', trigger: 'blur' }],
+  apiKey: [{ required: true, message: '请输入API Key', trigger: 'blur' }],
+  token: [{ required: true, message: '请输入 Token', trigger: 'blur' }]
 }
 
 const handleBack = () => router.push('/es/instances')
@@ -443,7 +446,11 @@ onMounted(async () => {
             formData.enableAlert = false // default for now
 
             // Parse address protocol
-            if (formData.httpsEnabled) addressProtocol.value = 'https'
+            if (formData.httpsEnabled) {
+                addressProtocol.value = 'https'
+            } else {
+                addressProtocol.value = 'http'
+            }
 
             if (data.instance_type?.type_name) {
                 formData.instanceType = data.instance_type.type_name

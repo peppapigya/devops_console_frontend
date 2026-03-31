@@ -46,10 +46,10 @@
             </el-form-item>
 
             <el-form-item label="标签">
-              <el-input 
-                v-model="formData.labelsStr" 
-                type="textarea" 
-                :rows="2" 
+              <el-input
+                v-model="formData.labelsStr"
+                type="textarea"
+                :rows="2"
                 placeholder="格式: key1=value1,key2=value2"
               />
             </el-form-item>
@@ -63,7 +63,7 @@
         <!-- Step 2: Fault Configuration -->
         <div v-show="currentStep === 1" class="wizard-step">
           <el-form :model="formData.spec" :rules="step2Rules" ref="formStep2" label-width="120px">
-            
+
             <!-- PodChaos Configuration -->
             <div v-if="formData.faultType === 'PodChaos'">
               <el-form-item label="故障动作" prop="action">
@@ -187,19 +187,19 @@
             </el-form-item>
 
             <el-form-item v-if="targetMode === 'label'" label="Label选择器">
-              <el-input 
-                v-model="formData.spec.labelSelectorsStr" 
-                type="textarea" 
-                :rows="4" 
+              <el-input
+                v-model="formData.spec.labelSelectorsStr"
+                type="textarea"
+                :rows="4"
                 placeholder="格式: app=frontend,env=dev"
               />
             </el-form-item>
 
             <el-form-item v-if="targetMode === 'pod'" label="指定Pod">
-              <el-input 
-                v-model="formData.spec.podsStr" 
-                type="textarea" 
-                :rows="4" 
+              <el-input
+                v-model="formData.spec.podsStr"
+                type="textarea"
+                :rows="4"
                 placeholder="格式: namespace1:pod1,pod2;namespace2:pod3"
               />
             </el-form-item>
@@ -262,12 +262,12 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
-import { useRouter } from 'vue-router'
-import { createChaosExperiment } from '@/api/chaos'
-import { getSelectedInstanceId } from '@/stores/instanceStore'
-import { listNamespaces } from '@/api/k8s/namespace'
+import {onMounted, reactive, ref} from 'vue'
+import {ElMessage} from 'element-plus'
+import {useRouter} from 'vue-router'
+import {createChaosExperiment} from '@/api/chaos'
+import {getSelectedInstanceId} from '@/stores/instanceStore'
+import {getNamespaceList} from '@/api/k8s/namespace'
 
 const router = useRouter()
 
@@ -328,7 +328,7 @@ const formStep3 = ref(null)
 const fetchNamespaces = async () => {
   try {
     const instanceId = getSelectedInstanceId()
-    const res = await listNamespaces(instanceId)
+    const res = await getNamespaceList(instanceId)
     namespaceList.value = res.data?.namespaceList || []
     if (namespaceList.value.length > 0 && !formData.namespace) {
       formData.namespace = namespaceList.value[0].name
@@ -415,7 +415,7 @@ const buildSelector = () => {
 
 const buildLabels = () => {
   if (!formData.labelsStr) return {}
-  
+
   const labels = {}
   const pairs = formData.labelsStr.split(',').filter(p => p.trim())
   pairs.forEach(pair => {
@@ -480,7 +480,7 @@ const handleSubmit = async () => {
   submitting.value = true
   try {
     const instanceId = getSelectedInstanceId()
-    
+
     const request = {
       name: formData.name,
       namespace: formData.namespace,

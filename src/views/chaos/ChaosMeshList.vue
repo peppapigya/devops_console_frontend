@@ -221,24 +221,34 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, reactive } from 'vue'
-import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import {computed, onMounted, reactive, ref} from 'vue'
+import {useRouter} from 'vue-router'
+import {ElMessage, ElMessageBox} from 'element-plus'
 import {
-  Search, RefreshRight, Plus, View, Delete,
-  VideoPlay, VideoPause, Aim, Connection,
-  Document, Cpu, Lightning, Warning, CircleCheck,
-  Clock
+  Aim,
+  CircleCheck,
+  Connection,
+  Cpu,
+  Delete,
+  Document,
+  Lightning,
+  Plus,
+  RefreshRight,
+  Search,
+  VideoPause,
+  VideoPlay,
+  View,
+  Warning
 } from '@element-plus/icons-vue'
 import {
-  getChaosExperiments,
-  getChaosExperiment,
   deleteChaosExperiment,
+  getChaosExperiment,
+  getChaosExperiments,
   pauseChaosExperiment,
   resumeChaosExperiment
 } from '@/api/chaos.js'
-import { getNamespaceList } from '@/api/k8s/namespace'
-import { getSelectedInstanceId } from '@/stores/instanceStore'
+import {getNamespaceList} from '@/api/k8s/namespace'
+import {getSelectedInstanceId} from '@/stores/instanceStore'
 import dayjs from 'dayjs'
 import ChaosDetail from './ChaosMeshDetail.vue'
 
@@ -401,7 +411,14 @@ const fetchData = async () => {
     const instanceId = getSelectedInstanceId()
     const ns = selectedNamespace.value || 'all'
     const res = await getChaosExperiments(ns, instanceId)
-    experimentList.value = res.data?.experiments || res.data?.items || res.data || []
+
+    // API might return { faults: null } or an array directly
+    const d = res.data || {}
+    let list = d.experiments || d.items || d.faults || d
+    if (!Array.isArray(list)) {
+      list = []
+    }
+    experimentList.value = list
     total.value = experimentList.value.length
   } catch (e) {
     ElMessage.error('获取混沌实验列表失败')

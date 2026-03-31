@@ -80,11 +80,11 @@
             <el-button :icon="Upload" @click="handleBatchUpload">批量上传</el-button>
             <el-button :icon="Download" @click="handleCloudImport">云导入</el-button>
             <el-button type="warning" @click="handleAutoMonitor">自动监控</el-button>
-            <el-button type="warning" plain @click="filter30Days = !filter30Days">
-              <span>{{ filter30Days ? '取消30天' : '⏱ 30天' }}</span>
+            <el-button :type="filter30Days ? 'warning' : 'default'" @click="filter30Days = !filter30Days">
+              {{ filter30Days ? '已选30天（点击取消）' : '⏱ 30天到期' }}
             </el-button>
-            <el-button type="danger" plain @click="filterAbnormal = !filterAbnormal">
-              <span>● 异常域名</span>
+            <el-button :type="filterAbnormal ? 'danger' : 'default'" @click="filterAbnormal = !filterAbnormal">
+              {{ filterAbnormal ? '取消看异常' : '● 异常域名' }}
             </el-button>
           </div>
 
@@ -420,16 +420,39 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import {onMounted, reactive, ref} from 'vue'
 import {
-  Monitor, CircleCheck, CircleClose, Warning, Remove,
-  Search, Refresh, Plus, Upload, Download, Document, Setting
+  CircleCheck,
+  CircleClose,
+  Document,
+  Download,
+  Monitor,
+  Plus,
+  Refresh,
+  Remove,
+  Search,
+  Setting,
+  Upload,
+  Warning
 } from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import {ElMessage, ElMessageBox} from 'element-plus'
 import {
-  getDomainStats, getDomainList, createDomain, updateDomain, deleteDomain, toggleDomainEnabled,
-  getSslCertList, applySslCert, uploadSslCert, deleteSslCert, downloadSslCert,
-  getDnsProviderList, createDnsProvider, updateDnsProvider, deleteDnsProvider, testDnsProvider
+  applySslCert,
+  createDnsProvider,
+  createDomain,
+  deleteDnsProvider,
+  deleteDomain,
+  deleteSslCert,
+  downloadSslCert,
+  getDnsProviderList,
+  getDomainList,
+  getDomainStats,
+  getSslCertList,
+  testDnsProvider,
+  toggleDomainEnabled,
+  updateDnsProvider,
+  updateDomain,
+  uploadSslCert
 } from '@/api/domain.js'
 
 // ===================== 云厂商配置 =====================
