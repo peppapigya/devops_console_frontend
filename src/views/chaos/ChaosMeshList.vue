@@ -581,9 +581,11 @@ const handleCleanupEviction = async (row) => {
       { type: 'warning', confirmButtonText: '确定清理', cancelButtonText: '取消' }
     )
     const instanceId = getSelectedInstanceId()
+    const deployNamespace = row.labels?.['chaos-namespace'] || row.namespace
     await cleanupEviction({
       nodeName,
       namespace: row.namespace,
+      deploymentNamespace: deployNamespace,
       deploymentName: deployName
     }, instanceId)
     ElMessage.success('演练环境已清理，Pod 正在恢复到正常节点')

@@ -268,11 +268,37 @@
                   </div>
                 </el-form-item>
 
+                <el-form-item label="目标命名空间">
+                  <el-select
+                    v-model="evictionForm.targetNamespace"
+                    placeholder="请选择命名空间"
+                    style="width: 100%"
+                    @change="handleTargetNamespaceChange"
+                  >
+                    <el-option
+                      v-for="ns in namespaceList"
+                      :key="ns.name"
+                      :label="ns.name"
+                      :value="ns.name"
+                    />
+                  </el-select>
+                </el-form-item>
+
                 <el-form-item label="目标 Deployment">
-                  <el-input
+                  <el-select
                     v-model="evictionForm.deploymentName"
-                    placeholder="请输入要驱逐的 Deployment 名称"
-                  />
+                    :loading="loadingDeployments"
+                    filterable
+                    placeholder="请选择要驱逐的 Deployment"
+                    style="width: 100%"
+                  >
+                    <el-option
+                      v-for="deploy in deploymentList"
+                      :key="deploy.name"
+                      :label="deploy.name"
+                      :value="deploy.name"
+                    />
+                  </el-select>
                   <div class="form-tip">该 Deployment 的 Pod 将被迁移到演练节点</div>
                 </el-form-item>
 
@@ -323,7 +349,7 @@
               {{ formData.spec.action }}
             </el-descriptions-item>
             <el-descriptions-item label="演练节点隐离">
-              {{ evictionForm.enabled ? `开启（节点: ${evictionForm.nodeName}， Deployment: ${evictionForm.deploymentName}）` : '未开启' }}
+              {{ evictionForm.enabled ? `开启（节点: ${evictionForm.nodeName}， Namespace: ${evictionForm.targetNamespace}， Deployment: ${evictionForm.deploymentName}）` : '未开启' }}
             </el-descriptions-item>
           </el-descriptions>
 
@@ -346,6 +372,7 @@ import {useRouter} from 'vue-router'
 import {createChaosExperiment, getChaosTestingNodes, prepareEviction} from '@/api/chaos'
 import {getSelectedInstanceId} from '@/stores/instanceStore'
 import {getNamespaceList} from '@/api/k8s/namespace'
+import {getDeploymentList} from '@/api/k8s/deployment'
 import {Connection} from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -358,9 +385,13 @@ const namespaceList = ref([])
 // 演练节点驱逐相关
 const chaosNodes = ref([])
 const loadingChaosNodes = ref(false)
+const deploymentList = ref([])
+const loadingDeployments = ref(false)
+
 const evictionForm = reactive({
   enabled: false,
   nodeName: '',
+  targetNamespace: '',
   deploymentName: ''
 })
 
@@ -469,8 +500,12 @@ const nextStep = async () => {
         ElMessage.warning('请选择演练节点')
         return
       }
+      if (!evictionForm.targetNamespace) {
+        ElMessage.warning('请选择目标命名空间')
+        return
+      }
       if (!evictionForm.deploymentName) {
-        ElMessage.warning('请输入目标 Deployment 名称')
+        ElMessage.warning('请选择目标 Deployment 名称')
         return
       }
     }
@@ -579,8 +614,35 @@ const buildSpec = () => {
 
 // 演练节点隘离相关
 const handleEvictionToggle = async (val) => {
-  if (val && chaosNodes.value.length === 0) {
-    await fetchChaosNodes()
+  if (val) {
+    if (chaosNodes.value.length === 0) {
+      await fetchChaosNodes()
+    }
+    if (!evictionForm.targetNamespace && formData.namespace) {
+      evictionForm.targetNamespace = formData.namespace
+      fetchDeployments()
+    }
+  }
+}
+
+const handleTargetNamespaceChange = () => {
+  evictionForm.deploymentName = ''
+  fetchDeployments()
+}
+
+const fetchDeployments = async () => {
+  if (!evictionForm.targetNamespace) return
+  loadingDeployments.value = true
+  try {
+    const instanceId = getSelectedInstanceId()
+    const res = await getDeploymentList(evictionForm.targetNamespace, instanceId)
+    // 根据具体返回结构适配
+    const list = res.data?.items || res.data?.deploymentList || res.data || []
+    deploymentList.value = Array.isArray(list) ? list : []
+  } catch (e) {
+    ElMessage.error('获取 Deployment 列表失败')
+  } finally {
+    loadingDeployments.value = false
   }
 }
 
@@ -604,10 +666,11 @@ const handleSubmit = async () => {
 
     // 如果开启了演练隅离，先执行 Pod 迁移
     if (evictionForm.enabled) {
-      ElMessage.info('正在将 Pod 迁移到演练节点，请稍候...（最长等待 120 秒）')
+      ElMessage.info('正在将 Pod 迁移到演练节点，请稍候...(最长等待 120 秒)')
       await prepareEviction({
         nodeName: evictionForm.nodeName,
-        namespace: formData.namespace,
+        namespace: formData.namespace,          // 实验 CR 命名空间
+        deploymentNamespace: evictionForm.targetNamespace,  // Deployment 实际命名空间
         deploymentName: evictionForm.deploymentName
       }, instanceId)
       ElMessage.success('Pod 已成功迁移到演练节点！')
@@ -619,6 +682,7 @@ const handleSubmit = async () => {
       chaosLabels['chaos-eviction'] = 'true'
       chaosLabels['chaos-node'] = evictionForm.nodeName
       chaosLabels['chaos-deploy'] = evictionForm.deploymentName
+      chaosLabels['chaos-namespace'] = evictionForm.targetNamespace
     }
 
     const request = {
