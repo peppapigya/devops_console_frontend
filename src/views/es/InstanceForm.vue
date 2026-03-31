@@ -409,7 +409,7 @@ const getAuthConfigValue = () => {
         case 'basic': return JSON.stringify({ username: formData.username, password: formData.password })
         case 'api_key': return JSON.stringify({ id: formData.apiId, key: formData.apiKey })
         case 'token': return formData.token
-        case 'kubeconfig': return formData.kubeconfigContent
+        case 'kubeconfig': return JSON.stringify({ kubeconfigContent: formData.kubeconfigContent, fileName: formData.kubeconfigFile?.name || 'config' })
         default: return ''
     }
 }
@@ -501,7 +501,16 @@ onMounted(async () => {
                              } else if (formData.authType === 'token') {
                                  formData.token = configStr
                              } else if (formData.authType === 'kubeconfig') {
-                                 formData.kubeconfigContent = configStr
+                                 try {
+                                     const parsed = typeof configStr === 'string' && configStr.startsWith('{') ? JSON.parse(configStr) : null;
+                                     if (parsed && parsed.kubeconfigContent) {
+                                         formData.kubeconfigContent = parsed.kubeconfigContent
+                                     } else {
+                                         formData.kubeconfigContent = configStr
+                                     }
+                                 } catch (e) {
+                                     formData.kubeconfigContent = configStr
+                                 }
                              }
                         }
                     }
