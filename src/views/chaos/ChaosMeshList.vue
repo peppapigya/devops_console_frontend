@@ -101,12 +101,12 @@
         <el-table-column label="实验名称" min-width="200">
           <template #default="{ row }">
             <div class="name-cell">
-              <div class="chaos-type-icon" :class="getTypeTheme(row.kind)">
-                <el-icon :size="16"><component :is="getTypeIcon(row.kind)" /></el-icon>
+              <div :class="getTypeTheme(row.faultType)" class="chaos-type-icon">
+                <el-icon :size="16"><component :is="getTypeIcon(row.faultType)" /></el-icon>
               </div>
               <div class="name-content">
                 <a class="name-link" @click="handleViewDetail(row)">{{ row.name }}</a>
-                <span class="resource-type">{{ row.kind || 'Chaos' }}</span>
+                <span class="resource-type">{{ row.faultType || 'Chaos' }}</span>
               </div>
             </div>
           </template>
@@ -123,8 +123,8 @@
         <el-table-column label="故障类型" min-width="140">
           <template #default="{ row }">
             <div class="fault-type-cell">
-              <span class="fault-badge" :class="getTypeTheme(row.kind)">
-                {{ getFaultLabel(row.kind) }}
+              <span :class="getTypeTheme(row.faultType)" class="fault-badge">
+                {{ getFaultLabel(row.faultType) }}
               </span>
             </div>
           </template>
@@ -150,7 +150,7 @@
         <!-- Created Time -->
         <el-table-column label="创建时间" width="175">
           <template #default="{ row }">
-            <span class="time-text">{{ formatDate(row.created) }}</span>
+            <span class="time-text">{{ formatDate(row.createdAt) }}</span>
           </template>
         </el-table-column>
 
@@ -171,7 +171,7 @@
                   :disabled="row.status === 'Finished' || row.status === 'Failed'"
                 >
                   <el-icon>
-                    <VideoPlay v-if="row.status === 'Paused'" />
+                    <VideoPlay v-if="row.status === 'Paused' || row.status === 'paused'" />
                     <VideoPause v-else />
                   </el-icon>
                 </button>
@@ -271,10 +271,10 @@ const showDetailDialog = ref(false)
 const detailData = reactive({
   name: '',
   namespace: '',
-  kind: '',
+  faultType: '',
   status: '',
   duration: '',
-  created: '',
+  createdAt: '',
   spec: {},
   events: []
 })
@@ -301,21 +301,21 @@ const statsCards = computed(() => {
     {
       key: 'running',
       label: '运行中',
-      value: list.filter(e => e.status === 'Running').length,
+      value: list.filter(e => e.status === 'Running' || e.status === 'running').length,
       icon: VideoPlay,
       theme: 'success'
     },
     {
       key: 'paused',
       label: '已暂停',
-      value: list.filter(e => e.status === 'Paused').length,
+      value: list.filter(e => e.status === 'Paused' || e.status === 'paused').length,
       icon: VideoPause,
       theme: 'warning'
     },
     {
       key: 'finished',
       label: '已完成',
-      value: list.filter(e => e.status === 'Finished' || e.status === 'Failed').length,
+      value: list.filter(e => ['Finished', 'finished', 'Failed', 'failed'].includes(e.status)).length,
       icon: CircleCheck,
       theme: 'info'
     }
@@ -327,10 +327,13 @@ const filteredList = computed(() => {
   let list = experimentList.value
 
   if (selectedFaultType.value) {
-    list = list.filter(e => e.kind === selectedFaultType.value)
+    list = list.filter(e => e.faultType === selectedFaultType.value)
   }
   if (selectedStatus.value) {
-    list = list.filter(e => e.status === selectedStatus.value)
+    list = list.filter(e => {
+        if (!e.status) return false
+        return e.status.toLowerCase() === selectedStatus.value.toLowerCase()
+    })
   }
   if (searchKeyword.value) {
     const kw = searchKeyword.value.toLowerCase()
@@ -369,23 +372,27 @@ const getTypeTheme = (kind) => {
 }
 
 const getStatusTheme = (status) => {
+  if (!status) return 'unknown'
+  const cap = typeof status === 'string' ? status.charAt(0).toUpperCase() + status.slice(1).toLowerCase() : status
   const map = {
     Running: 'running',
     Paused: 'paused',
     Finished: 'finished',
     Failed: 'failed'
   }
-  return map[status] || 'unknown'
+  return map[cap] || 'unknown'
 }
 
 const getStatusLabel = (status) => {
+  if (!status) return '未知'
+  const cap = typeof status === 'string' ? status.charAt(0).toUpperCase() + status.slice(1).toLowerCase() : status
   const map = {
     Running: '运行中',
     Paused: '已暂停',
     Finished: '已完成',
     Failed: '失败'
   }
-  return map[status] || status || '未知'
+  return map[cap] || status || '未知'
 }
 
 const formatDate = (ts) => {
@@ -464,10 +471,10 @@ const handleViewDetail = async (row) => {
     Object.assign(detailData, {
       name: detail.name || row.name,
       namespace: detail.namespace || row.namespace,
-      kind: detail.kind || row.kind,
+      faultType: detail.faultType || row.faultType,
       status: detail.status || row.status,
       duration: detail.duration || row.duration,
-      created: detail.created || row.created,
+      createdAt: detail.createdAt || row.createdAt,
       spec: detail.spec || detail,
       events: detail.events || []
     })
@@ -478,7 +485,7 @@ const handleViewDetail = async (row) => {
 }
 
 const handleTogglePause = async (row) => {
-  const isPaused = row.status === 'Paused'
+  const isPaused = row.status === 'Paused' || row.status === 'paused'
   const action = isPaused ? '恢复' : '暂停'
   try {
     await ElMessageBox.confirm(`确定${action}实验 "${row.name}"？`, `${action}实验`, {

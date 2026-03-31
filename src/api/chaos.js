@@ -23,7 +23,7 @@ export const createChaosExperiment = (namespace, data, instanceId) => {
 
 export const getChaosExperiment = (namespace, name, instanceId) => {
   return request({
-    url: `/k8s/chaos/detail/${namespace}/${name}`,
+    url: `/k8s/chaos/get/${namespace}/${name}`,
     method: 'get',
     params: {
       instance_id: instanceId

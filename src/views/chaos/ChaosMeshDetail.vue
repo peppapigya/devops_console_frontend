@@ -48,22 +48,22 @@
         </el-descriptions>
 
         <div class="action-buttons">
-          <el-button 
-            v-if="experiment.status === 'Running'" 
-            type="warning" 
+          <el-button
+            v-if="experiment.status === 'Running' || experiment.status === 'running'"
+            type="warning"
             @click="handlePause"
           >
             暂停实验
           </el-button>
-          <el-button 
-            v-if="experiment.status === 'paused'" 
-            type="success" 
+          <el-button
+            v-if="experiment.status === 'paused' || experiment.status === 'Paused'"
+            type="success"
             @click="handleResume"
           >
             恢复实验
           </el-button>
-          <el-button 
-            type="danger" 
+          <el-button
+            type="danger"
             @click="handleDelete"
           >
             删除实验
@@ -91,9 +91,9 @@
         </template>
 
         <div v-if="experiment.labels && Object.keys(experiment.labels).length > 0" class="labels-container">
-          <el-tag 
-            v-for="(value, key) in experiment.labels" 
-            :key="key" 
+          <el-tag
+            v-for="(value, key) in experiment.labels"
+            :key="key"
             class="label-tag"
           >
             {{ key }}: {{ value }}
@@ -109,8 +109,8 @@
         </template>
 
         <el-timeline v-if="experiment.events && experiment.events.length > 0">
-          <el-timeline-item 
-            v-for="(event, index) in experiment.events" 
+          <el-timeline-item
+            v-for="(event, index) in experiment.events"
             :key="index"
             :timestamp="formatTime(event.timestamp)"
             :type="getEventType(event.type)"
@@ -134,9 +134,9 @@
           <span class="card-title">影响目标</span>
         </template>
 
-        <el-table 
+        <el-table
           v-if="experiment.targets && experiment.targets.length > 0"
-          :data="experiment.targets" 
+          :data="experiment.targets"
           style="width: 100%"
         >
           <el-table-column label="Pod名称" min-width="200">
@@ -178,11 +178,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted, reactive } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { useRouter, useRoute } from 'vue-router'
-import { getChaosExperiment, deleteChaosExperiment, pauseChaosExperiment, resumeChaosExperiment } from '@/api/chaos'
-import { getSelectedInstanceId } from '@/stores/instanceStore'
+import {onMounted, reactive, ref} from 'vue'
+import {ElMessage, ElMessageBox} from 'element-plus'
+import {useRoute, useRouter} from 'vue-router'
+import {deleteChaosExperiment, getChaosExperiment, pauseChaosExperiment, resumeChaosExperiment} from '@/api/chaos'
+import {getSelectedInstanceId} from '@/stores/instanceStore'
 
 const router = useRouter()
 const route = useRoute()
@@ -214,7 +214,7 @@ const fetchDetail = async () => {
     const faultType = route.query.faultType
 
     const res = await getChaosExperiment(namespace, name, instanceId)
-    
+
     Object.assign(experiment, res.data || {})
   } catch (e) {
     ElMessage.error('获取实验详情失败')
@@ -264,8 +264,8 @@ const handleResume = async () => {
 const handleDelete = async () => {
   try {
     await ElMessageBox.confirm(
-      `确认删除实验 "${experiment.name}"? 此操作不可恢复`, 
-      '警告', 
+      `确认删除实验 "${experiment.name}"? 此操作不可恢复`,
+      '警告',
       {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
@@ -289,13 +289,15 @@ const handleBack = () => {
 }
 
 const getStatusType = (status) => {
+  if (!status) return 'info'
+  const cap = typeof status === 'string' ? status.charAt(0).toUpperCase() + status.slice(1).toLowerCase() : status
   const typeMap = {
     'Running': 'success',
-    'paused': 'warning',
+    'Paused': 'warning',
     'Failed': 'danger',
     'Finished': 'info'
   }
-  return typeMap[status] || 'info'
+  return typeMap[cap] || 'info'
 }
 
 const getTargetStatusType = (status) => {
