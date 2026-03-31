@@ -290,6 +290,16 @@ body {
     box-shadow: 0 4px 12px rgba(103, 194, 58, 0.4);
 }
 
+/* 清理/恢复 - 青绿色 */
+.autoops-action-btn.cleanup {
+    background: linear-gradient(135deg, #36CFC9 0%, #13c2c2 100%) !important;
+    color: white !important;
+}
+
+.autoops-action-btn.cleanup:hover {
+    box-shadow: 0 4px 12px rgba(19, 194, 194, 0.4);
+}
+
 /* 禁用状态 */
 .autoops-action-btn:disabled {
     opacity: 0.5;

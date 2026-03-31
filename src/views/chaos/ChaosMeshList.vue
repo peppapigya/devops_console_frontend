@@ -155,7 +155,7 @@
         </el-table-column>
 
         <!-- Actions -->
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column fixed="right" label="操作" width="240">
           <template #default="{ row }">
             <div class="autoops-actions">
               <el-tooltip content="查看详情" placement="top" :show-after="300">
@@ -163,10 +163,10 @@
                   <el-icon><View /></el-icon>
                 </button>
               </el-tooltip>
-              <el-tooltip :content="row.status === 'Paused' ? '恢复实验' : '暂停实验'" placement="top" :show-after="300">
+              <el-tooltip :content="(row.status === 'Paused' || row.status === 'paused') ? '恢复实验' : '暂停实验'" :show-after="300" placement="top">
                 <button
                   class="autoops-action-btn"
-                  :class="row.status === 'Paused' ? 'update' : 'scale'"
+                  :class="(row.status === 'Paused' || row.status === 'paused') ? 'update' : 'scale'"
                   @click="handleTogglePause(row)"
                   :disabled="row.status === 'Finished' || row.status === 'Failed'"
                 >
@@ -174,6 +174,11 @@
                     <VideoPlay v-if="row.status === 'Paused' || row.status === 'paused'" />
                     <VideoPause v-else />
                   </el-icon>
+                </button>
+              </el-tooltip>
+              <el-tooltip v-if="row.labels && row.labels['chaos-eviction'] === 'true'" :show-after="300" content="清理演练环境" placement="top">
+                <button class="autoops-action-btn cleanup" @click="handleCleanupEviction(row)">
+                  <el-icon><RefreshRight /></el-icon>
                 </button>
               </el-tooltip>
               <el-tooltip content="删除实验" placement="top" :show-after="300">
@@ -188,6 +193,12 @@
 
       <!-- Pagination -->
       <div class="pagination-container">
+        <div class="pagination-meta">
+          <span v-if="lastUpdated" class="last-updated">最后更新：{{ lastUpdated }}</span>
+          <span v-if="hasRunningExperiments" class="polling-badge">
+            <span class="polling-dot"></span> 实时更新中
+          </span>
+        </div>
         <el-pagination
           v-model:current-page="currentPage"
           v-model:page-size="pageSize"
@@ -221,7 +232,7 @@
 </template>
 
 <script setup>
-import {computed, onMounted, reactive, ref} from 'vue'
+import {computed, onMounted, onUnmounted, reactive, ref} from 'vue'
 import {useRouter} from 'vue-router'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {
@@ -241,6 +252,7 @@ import {
   Warning
 } from '@element-plus/icons-vue'
 import {
+  cleanupEviction,
   deleteChaosExperiment,
   getChaosExperiment,
   getChaosExperiments,
@@ -259,6 +271,8 @@ const namespaceList = ref([])
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
+const lastUpdated = ref('')
+let pollingTimer = null
 
 // Filters
 const selectedNamespace = ref('')
@@ -288,6 +302,13 @@ const faultTypes = [
 ]
 
 // Computed stats
+const hasRunningExperiments = computed(() =>
+  experimentList.value.some(e => {
+    const s = (e.status || '').toLowerCase()
+    return s === 'running'
+  })
+)
+
 const statsCards = computed(() => {
   const list = experimentList.value
   return [
@@ -427,6 +448,7 @@ const fetchData = async () => {
     }
     experimentList.value = list
     total.value = experimentList.value.length
+    lastUpdated.value = dayjs().format('HH:mm:ss')
   } catch (e) {
     ElMessage.error('获取混沌实验列表失败')
     experimentList.value = []
@@ -434,6 +456,14 @@ const fetchData = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const startPolling = () => {
+  pollingTimer = setInterval(() => {
+    if (hasRunningExperiments.value) {
+      fetchData()
+    }
+  }, 5000)
 }
 
 // Event handlers
@@ -536,9 +566,44 @@ const handleDeleteFromDetail = (row) => {
   handleDelete(row)
 }
 
+// 清理演练环境
+const handleCleanupEviction = async (row) => {
+  const nodeName = row.labels?.['chaos-node']
+  const deployName = row.labels?.['chaos-deploy']
+  if (!nodeName || !deployName) {
+    ElMessage.warning('找不到演练节点或 Deployment 信息')
+    return
+  }
+  try {
+    await ElMessageBox.confirm(
+      `确定清理实验 "${row.name}" 的演练环境？\n\n这将会回滚 Deployment、去掉污点并将 Pod 迁回正常节点。`,
+      '清理演练环境',
+      { type: 'warning', confirmButtonText: '确定清理', cancelButtonText: '取消' }
+    )
+    const instanceId = getSelectedInstanceId()
+    await cleanupEviction({
+      nodeName,
+      namespace: row.namespace,
+      deploymentName: deployName
+    }, instanceId)
+    ElMessage.success('演练环境已清理，Pod 正在恢复到正常节点')
+    fetchData()
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('清理失败: ' + (e.response?.data?.message || e.message || '未知错误'))
+  }
+}
+
 onMounted(() => {
   fetchData()
   fetchNamespaces()
+  startPolling()
+})
+
+onUnmounted(() => {
+  if (pollingTimer) {
+    clearInterval(pollingTimer)
+    pollingTimer = null
+  }
 })
 </script>
 
@@ -778,7 +843,37 @@ onMounted(() => {
 .pagination-container {
   padding-top: 20px;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.pagination-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+}
+
+.last-updated {
+  color: var(--autoops-text-placeholder);
+}
+
+.polling-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--autoops-success);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.polling-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--autoops-success);
+  animation: pulse-dot 1.5s ease-in-out infinite;
 }
 
 /* Create Button Enhancement */

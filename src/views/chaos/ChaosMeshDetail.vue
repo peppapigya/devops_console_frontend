@@ -1,6 +1,6 @@
 <template>
   <div class="autoops-container chaos-detail-page">
-    <div class="page-header">
+    <div v-if="!isComponentMode" class="page-header">
       <el-page-header @back="handleBack" title="返回">
         <template #content>
           <span class="page-title">混沌实验详情</span>
@@ -178,11 +178,26 @@
 </template>
 
 <script setup>
-import {onMounted, reactive, ref} from 'vue'
+import {computed, onMounted, reactive, ref} from 'vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {useRoute, useRouter} from 'vue-router'
 import {deleteChaosExperiment, getChaosExperiment, pauseChaosExperiment, resumeChaosExperiment} from '@/api/chaos'
 import {getSelectedInstanceId} from '@/stores/instanceStore'
+
+const props = defineProps({
+  experiment: {
+    type: Object,
+    default: null
+  },
+  instanceId: {
+    type: [Number, String],
+    default: null
+  }
+})
+
+const emit = defineEmits(['pause', 'delete'])
+
+const isComponentMode = computed(() => !!props.experiment)
 
 const router = useRouter()
 const route = useRoute()
@@ -208,10 +223,14 @@ const experiment = reactive({
 const fetchDetail = async () => {
   loading.value = true
   try {
-    const instanceId = getSelectedInstanceId()
-    const namespace = route.query.namespace
-    const name = route.query.name
-    const faultType = route.query.faultType
+    const instanceId = props.instanceId || getSelectedInstanceId()
+    const namespace = props.experiment?.namespace || route.query.namespace
+    const name = props.experiment?.name || route.query.name
+
+    if (!namespace || !name) {
+       if (props.experiment) Object.assign(experiment, props.experiment)
+       return
+    }
 
     const res = await getChaosExperiment(namespace, name, instanceId)
 
@@ -224,6 +243,11 @@ const fetchDetail = async () => {
 }
 
 const handlePause = async () => {
+  if (isComponentMode.value) {
+    emit('pause', experiment)
+    return
+  }
+
   try {
     await ElMessageBox.confirm(`确认暂停实验 "${experiment.name}"?`, '提示', {
       confirmButtonText: '确定',
@@ -243,6 +267,11 @@ const handlePause = async () => {
 }
 
 const handleResume = async () => {
+  if (isComponentMode.value) {
+    emit('pause', experiment) // the list handles both via toggle pause
+    return
+  }
+
   try {
     await ElMessageBox.confirm(`确认恢复实验 "${experiment.name}"?`, '提示', {
       confirmButtonText: '确定',
@@ -262,6 +291,11 @@ const handleResume = async () => {
 }
 
 const handleDelete = async () => {
+  if (isComponentMode.value) {
+    emit('delete', experiment)
+    return
+  }
+
   try {
     await ElMessageBox.confirm(
       `确认删除实验 "${experiment.name}"? 此操作不可恢复`,

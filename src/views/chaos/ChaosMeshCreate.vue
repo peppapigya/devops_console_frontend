@@ -15,6 +15,7 @@
           <el-step title="基本信息" />
           <el-step title="故障配置" />
           <el-step title="目标选择" />
+          <el-step title="演练隔离" />
           <el-step title="确认提交" />
         </el-steps>
 
@@ -225,8 +226,80 @@
           </div>
         </div>
 
-        <!-- Step 4: Preview & Submit -->
+        <!-- Step 4: Eviction Isolation -->
         <div v-show="currentStep === 3" class="wizard-step">
+          <div class="eviction-section">
+            <div class="eviction-header">
+              <el-icon class="eviction-icon"><Connection /></el-icon>
+              <div>
+                <div class="eviction-title">演练节点隐离（推荐）</div>
+                <div class="eviction-desc">将目标 Pod 迁移到专用演练节点再注入故障，严格控制爆炸半径</div>
+              </div>
+            </div>
+
+            <el-form :model="evictionForm" class="eviction-form" label-width="130px">
+              <el-form-item label="开启演练隔离">
+                <el-switch
+                  v-model="evictionForm.enabled"
+                  active-text="开启"
+                  inactive-text="不限制"
+                  @change="handleEvictionToggle"
+                />
+              </el-form-item>
+
+              <template v-if="evictionForm.enabled">
+                <el-form-item label="演练节点">
+                  <el-select
+                    v-model="evictionForm.nodeName"
+                    :loading="loadingChaosNodes"
+                    placeholder="请选择演练节点"
+                    style="width: 100%"
+                  >
+                    <el-option
+                      v-for="node in chaosNodes"
+                      :key="node.name"
+                      :disabled="node.status !== 'Ready'"
+                      :label="`${node.name}  (${node.status})`"
+                      :value="node.name"
+                    />
+                  </el-select>
+                  <div v-if="chaosNodes.length === 0 && !loadingChaosNodes" class="form-tip">
+                    没有找到演练节点，请先给节点打上 <code>role=chaos-testing</code> 标签
+                  </div>
+                </el-form-item>
+
+                <el-form-item label="目标 Deployment">
+                  <el-input
+                    v-model="evictionForm.deploymentName"
+                    placeholder="请输入要驱逐的 Deployment 名称"
+                  />
+                  <div class="form-tip">该 Deployment 的 Pod 将被迁移到演练节点</div>
+                </el-form-item>
+
+                <el-alert :closable="false" class="eviction-alert" type="warning">
+                  <template #default>
+                    <div>⚠️ 打开后，提交实验时将执行：</div>
+                    <ol class="eviction-steps-list">
+                      <li>给演练节点打上 <code>NoSchedule</code> 污点</li>
+                      <li>Patch 目标 Deployment ，加入 Toleration + NodeAffinity</li>
+                      <li>Evict 目标 Pod，Pod 将在演练节点重建</li>
+                      <li>等待 Pod 在演练节点就绪后创建 Chaos 实验</li>
+                    </ol>
+                    <div>实验完成后，请在列表页点击“清理”恢复环境。</div>
+                  </template>
+                </el-alert>
+              </template>
+            </el-form>
+          </div>
+
+          <div class="step-actions">
+            <el-button @click="prevStep">上一步</el-button>
+            <el-button type="primary" @click="nextStep">下一步</el-button>
+          </div>
+        </div>
+
+        <!-- Step 5: Preview & Submit -->
+        <div v-show="currentStep === 4" class="wizard-step">
           <el-descriptions title="实验配置预览" :column="1" border>
             <el-descriptions-item label="实验名称">
               {{ formData.name }}
@@ -249,11 +322,16 @@
             <el-descriptions-item v-if="formData.spec.action" label="故障动作">
               {{ formData.spec.action }}
             </el-descriptions-item>
+            <el-descriptions-item label="演练节点隐离">
+              {{ evictionForm.enabled ? `开启（节点: ${evictionForm.nodeName}， Deployment: ${evictionForm.deploymentName}）` : '未开启' }}
+            </el-descriptions-item>
           </el-descriptions>
 
           <div class="step-actions">
             <el-button @click="prevStep">上一步</el-button>
-            <el-button type="primary" :loading="submitting" @click="handleSubmit">提交实验</el-button>
+            <el-button :loading="submitting" type="primary" @click="handleSubmit">
+              {{ evictionForm.enabled ? '迁移 Pod 并提交实验' : '提交实验' }}
+            </el-button>
           </div>
         </div>
       </el-card>
@@ -265,9 +343,10 @@
 import {onMounted, reactive, ref} from 'vue'
 import {ElMessage} from 'element-plus'
 import {useRouter} from 'vue-router'
-import {createChaosExperiment} from '@/api/chaos'
+import {createChaosExperiment, getChaosTestingNodes, prepareEviction} from '@/api/chaos'
 import {getSelectedInstanceId} from '@/stores/instanceStore'
 import {getNamespaceList} from '@/api/k8s/namespace'
+import {Connection} from '@element-plus/icons-vue'
 
 const router = useRouter()
 
@@ -275,6 +354,15 @@ const currentStep = ref(0)
 const submitting = ref(false)
 const targetMode = ref('label')
 const namespaceList = ref([])
+
+// 演练节点驱逐相关
+const chaosNodes = ref([])
+const loadingChaosNodes = ref(false)
+const evictionForm = reactive({
+  enabled: false,
+  nodeName: '',
+  deploymentName: ''
+})
 
 const formData = reactive({
   name: '',
@@ -374,6 +462,19 @@ const nextStep = async () => {
     } catch (e) {
       ElMessage.warning('请完善目标选择')
     }
+  } else if (currentStep.value === 3) {
+    // 演练隅离步骤验证
+    if (evictionForm.enabled) {
+      if (!evictionForm.nodeName) {
+        ElMessage.warning('请选择演练节点')
+        return
+      }
+      if (!evictionForm.deploymentName) {
+        ElMessage.warning('请输入目标 Deployment 名称')
+        return
+      }
+    }
+    currentStep.value++
   }
 }
 
@@ -476,25 +577,64 @@ const buildSpec = () => {
   return spec
 }
 
+// 演练节点隘离相关
+const handleEvictionToggle = async (val) => {
+  if (val && chaosNodes.value.length === 0) {
+    await fetchChaosNodes()
+  }
+}
+
+const fetchChaosNodes = async () => {
+  loadingChaosNodes.value = true
+  try {
+    const instanceId = getSelectedInstanceId()
+    const res = await getChaosTestingNodes(instanceId)
+    chaosNodes.value = res.data?.nodes || []
+  } catch (e) {
+    ElMessage.error('获取演练节点列表失败')
+  } finally {
+    loadingChaosNodes.value = false
+  }
+}
+
 const handleSubmit = async () => {
   submitting.value = true
   try {
     const instanceId = getSelectedInstanceId()
+
+    // 如果开启了演练隅离，先执行 Pod 迁移
+    if (evictionForm.enabled) {
+      ElMessage.info('正在将 Pod 迁移到演练节点，请稍候...（最长等待 120 秒）')
+      await prepareEviction({
+        nodeName: evictionForm.nodeName,
+        namespace: formData.namespace,
+        deploymentName: evictionForm.deploymentName
+      }, instanceId)
+      ElMessage.success('Pod 已成功迁移到演练节点！')
+    }
+
+    // 构建请求
+    const chaosLabels = buildLabels()
+    if (evictionForm.enabled) {
+      chaosLabels['chaos-eviction'] = 'true'
+      chaosLabels['chaos-node'] = evictionForm.nodeName
+      chaosLabels['chaos-deploy'] = evictionForm.deploymentName
+    }
 
     const request = {
       name: formData.name,
       namespace: formData.namespace,
       faultType: formData.faultType,
       duration: formData.duration,
-      labels: buildLabels(),
+      labels: chaosLabels,
       spec: buildSpec()
     }
 
     await createChaosExperiment(formData.namespace, request, instanceId)
-    ElMessage.success('实验创建成功')
+    ElMessage.success('实验创建成功' + (evictionForm.enabled ? '！实验结束后请记得点击列表页“清理”恢复环境' : ''))
     router.push('/chaos')
   } catch (e) {
-    ElMessage.error('实验创建失败: ' + (e.message || '未知错误'))
+    ElMessage.error('实验创建失败: ' + (e.response?.data?.message || e.message || '未知错误'))
   } finally {
     submitting.value = false
   }
@@ -545,4 +685,62 @@ onMounted(() => {
   color: #909399;
   margin-left: 8px;
 }
+
+.eviction-section {
+  background: linear-gradient(135deg, rgba(64, 158, 255, 0.04) 0%, rgba(103, 194, 58, 0.04) 100%);
+  border: 1px solid rgba(64, 158, 255, 0.2);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.eviction-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.eviction-icon {
+  font-size: 28px;
+  color: var(--el-color-primary);
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.eviction-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+  margin-bottom: 4px;
+}
+
+.eviction-desc {
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+}
+
+.eviction-form {
+  margin-top: 8px;
+}
+
+.eviction-alert {
+  margin-top: 12px;
+}
+
+.eviction-steps-list {
+  margin: 8px 0 8px 16px;
+  padding: 0;
+  font-size: 13px;
+  line-height: 2;
+}
+
+.eviction-steps-list code {
+  background: rgba(0, 0, 0, 0.06);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 12px;
+}
+
 </style>

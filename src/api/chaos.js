@@ -60,3 +60,31 @@ export const resumeChaosExperiment = (namespace, name, instanceId) => {
     }
   })
 }
+
+// ——— 演练节点驱逐 ———
+
+export const getChaosTestingNodes = (instanceId) => {
+  return request({
+    url: '/k8s/chaos/nodes',
+    method: 'get',
+    params: { instance_id: instanceId }
+  })
+}
+
+export const prepareEviction = (data, instanceId) => {
+  return request({
+    url: '/k8s/chaos/evict/prepare',
+    method: 'post',
+    data,
+    params: { instance_id: instanceId }
+  })
+}
+
+export const cleanupEviction = (data, instanceId) => {
+  return request({
+    url: '/k8s/chaos/evict/cleanup',
+    method: 'post',
+    data,
+    params: { instance_id: instanceId }
+  })
+}
